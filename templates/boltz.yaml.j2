@@ -1,0 +1,14 @@
+version: 1
+sequences:
+  - protein:
+      id: [A, B, C, D] # four identical alpha chains
+      sequence: {{ alpha_seq }}
+  - protein:
+      id: [E, F, G, H] # four identical beta chains
+      sequence: {{ beta_seq }}
+  - ligand:
+      id: I
+      smiles: '{{ smiles }}'
+
+templates:
+  - cif: {{ cif_file }}
