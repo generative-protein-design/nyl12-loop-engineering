@@ -243,8 +243,8 @@ def main():
     parser.add_argument("--boltz-input-template", default="templates/boltz.yaml.j2",
                         help="Path to the template file for boltz input")
 
-    parser.add_argument("--molecule-smiles", default="[NH3+]CCCCCC(NCCCCCC(NCCCCCC(NCCCCCC([O-])=O)=O)=O)=O",
-                        help="Molecule in smiles format")
+    parser.add_argument("--molecule-smiles", default="CC(=O)NCCCCCC(=O)NCCCCCC(=O)NCCCCCC(=O)NCCCCCC(=O)NCCCCCC(=O)[O-]",
+                        help="Molecule in SMILES format")
     parser.add_argument("--contig-string",
                         default="A1-5,A18-114,7-7,A122-150,14-14,A165-221,A233-328,B1-5,B286-292,8-8,B301-308,C1-5,D1-5,D29-35,5-5,D41-95,9-9,D105-110",
                         help="Contig string defining conditional information and variable regions (RFdiffusion format)")
