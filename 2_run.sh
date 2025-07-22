@@ -12,4 +12,5 @@ python prepare_boltz_input_nyl12.py \
                              --use_msa_server \
                              --msa_pairing_strategy greedy \
                              --use_potentials \
+                             --out_dir output_test/2_boltz/output \
                              --cache /data/jpc/code/boltz
