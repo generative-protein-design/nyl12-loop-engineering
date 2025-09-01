@@ -1,0 +1,20 @@
+[project]
+name = "diffusion"
+version = "0.1.0"
+description = "Diffusion model environment for nyl12 loop engineering"
+authors = []
+platforms = ["linux-64"]
+
+channels = [
+    "pytorch",
+    "conda-forge",
+    "nvidia",
+    "https://conda.rosettacommons.org",
+    "dglteam/label/cu118",
+    "pyg",
+]
+channel-priority = "disabled"  
+
+
+[dependencies]
+    rf_diffusion_all_atom = { path = "../rf_diffusion_all_atom/rf_diffusion_all_atom-0.1.9-pyh4616a5c_0.conda" }
