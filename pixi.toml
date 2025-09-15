@@ -10,6 +10,7 @@ channels = [
     "conda-forge",
     "nvidia",
     "https://conda.rosettacommons.org",
+    "protein-design",
     "dglteam/label/cu118",
     "pyg",
 ]
@@ -17,4 +18,4 @@ channel-priority = "disabled"
 
 
 [dependencies]
-    rf_diffusion_all_atom = { path = "../rf_diffusion_all_atom/rf_diffusion_all_atom-0.1.9-pyh4616a5c_0.conda" }
+    rf_diffusion_all_atom = "*"
