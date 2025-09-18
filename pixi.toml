@@ -19,3 +19,5 @@ channel-priority = "disabled"
 
 [dependencies]
     rf_diffusion_all_atom = "*"
+    pytest = "*"
+    jinja2 = "*"

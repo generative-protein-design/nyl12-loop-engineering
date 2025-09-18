@@ -2,11 +2,38 @@
 
 ## Installation
 
-Before running the pipeline, install the required Python packages:
+Before running the pipeline, install Pixi:
 
 ```bash
-pip install -r requirements.txt
+curl -fsSL https://pixi.sh/install.sh | sh
 ```
+
+Set pixi cache dir (if needed):
+```bash
+export PIXI_CACHE_DIR=/global/cfs/cdirs/xxxx/protein-design/pixi/cache # on NERSC, use project name
+```
+
+then install dependencies (will take some time)
+
+```bash
+pixi install
+```
+
+then download the model weights (if not already present)
+
+```bash
+wget http://files.ipd.uw.edu/pub/RF-All-Atom/weights/RFDiffusionAA_paper_weights.pt
+```
+
+
+## Running Inference 
+
+
+example to run inference (set correct path to downloaded model weights file):
+```bash
+pixi run run-inference inference.deterministic=True diffuser.T=20 inference.output_prefix=output/ligand_only/sample inference.input_pdb=input_test/nyl12_jmp.pdb contigmap.contigs=[\'150-150\'] inference.ligand=LIG inference.num_designs=1 inference.design_startnum=0 inference.ckpt_path=../RFDiffusionAA_paper_weights.pt
+```
+
 
 ## Running Boltz-2 
 
@@ -15,7 +42,7 @@ pip install -r requirements.txt
 Run script from the root directory:
 
 ```bash
-python prepare_boltz_input_nyl12.py \
+pixi run python prepare_boltz_input_nyl12.py \
 --input-dir output_test/1_ligandmpnn/seqs \
 --output-dir output_test/2_boltz/input \
 --cif-file /path/to/cif/file.cif
@@ -23,13 +50,7 @@ python prepare_boltz_input_nyl12.py \
 
 for a full list of available options, type:
 ```bash
-python prepare_boltz_input_nyl12.py -h
-```
-
-
-example to run inference:
-```bash
-pixi run run-inference inference.deterministic=True diffuser.T=20 inference.output_prefix=output/ligand_only/sample inference.input_pdb=input_test/nyl12_jmp.pdb contigmap.contigs=[\'150-150\'] inference.ligand=LIG inference.num_designs=1 inference.design_startnum=0 inference.ckpt_path=/data/jpc/code/rf_diffusion_all_atom/RFDiffusionAA_paper_weights.pt
+pixi run python prepare_boltz_input_nyl12.py -h
 ```
 
 
