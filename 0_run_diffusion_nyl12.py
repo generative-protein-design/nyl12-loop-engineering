@@ -1,102 +1,81 @@
 # based on https://github.com/ikalvet/heme_binder_diffusion/blob/main/pipeline.ipynb
 
-import os, sys, glob
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import getpass
+import os, glob
 import subprocess
-import time
-import importlib
-from shutil import copy2
 
-### Path to this cloned GitHub repo:
-SCRIPT_DIR = os.path.dirname(__file__)  # edit this to the GitHub repo path. Throws an error by default.
-assert os.path.exists(SCRIPT_DIR)
-sys.path.append(SCRIPT_DIR+"/scripts/utils")
-import utils
+import hydra
+from hydra.core.hydra_config import HydraConfig
 
-diffusion_script = "/data/jpc/code/rf_diffusion_all_atom/run_inference.py"  # edit this
 
-### Python and/or Apptainer executables needed for running the jobs
-### Please provide paths to executables that are able to run the different tasks.
-### They can all be the same if you have an environment with all of the ncessary Python modules in one
+def run_diffusion(conf):
 
-# If your added Apptainer does not execute scripts directly,
-# try adding 'apptainer run' or 'apptainer run --nv' (for GPU) in front of the command
+    conf.base_dir = os.path.abspath(conf.base_dir)
 
-CONDAPATH = "/data/jpc/code/miniconda3"   # edit this depending on where your Conda environments live
-PYTHON = {"diffusion": f"{CONDAPATH}/envs/diffusion/bin/python",
-          "ligandMPNN": f"{CONDAPATH}/envs/diffusion/bin/python",
-          "pymol-env": f"{CONDAPATH}/envs/pymol-env/bin/python",
-          "general": f"{CONDAPATH}/envs/diffusion/bin/python"}
+    if not os.path.exists(conf.work_dir):
+        os.makedirs(conf.work_dir, exist_ok=True)
 
-### Path where the jobs will be run and outputs dumped
-WDIR = "/data/jpc/code/heme_binder_diffusion/output_test"
+    print(f"Working directory: {conf.work_dir}")
 
-if not os.path.exists(WDIR):
-    os.makedirs(WDIR, exist_ok=True)
+   # Set up diffusion run
+    diffusion_inputs = glob.glob(f"{conf.diffusion.input_dir}/*.pdb")
+    print(f"Found {len(diffusion_inputs)} PDB files")
 
-print(f"Working directory: {WDIR}")
+    diffusion_dir = conf.diffusion.output_dir
+    if not os.path.exists(diffusion_dir):
+        os.makedirs(diffusion_dir, exist_ok=False)
 
-# Ligand information
-params = [f"{SCRIPT_DIR}/theozyme/PA6_L5_mod/LIG.params"]  # Rosetta params file
-LIGAND = "LIG"
+    ## Set up diffusion commands based on the input PDB file(s)
+    ## Diffusion jobs are run in separate directories for each input PDB
 
-# Set up diffusion run
-diffusion_inputs = glob.glob(f"{SCRIPT_DIR}/input_test/nyl12_jmp.pdb")
-print(f"Found {len(diffusion_inputs)} PDB files")
+    commands_diffusion = []
+    cmds_filename = os.path.join(diffusion_dir, "commands_diffusion.sh")
+    diffusion_rundirs = []
 
-DIFFUSION_DIR = f"{WDIR}/0_diffusion"
-if not os.path.exists(DIFFUSION_DIR):
-    os.makedirs(DIFFUSION_DIR, exist_ok=False)
+    with open(cmds_filename, "w") as file:
+        for p in diffusion_inputs:
+            pdbname = os.path.basename(p).replace(".pdb", "")
+            pdb_dir = os.path.join(diffusion_dir, pdbname)
+            cmd = f"{conf.diffusion.command} " \
+                  f"inference.input_pdb={p} " \
+                  f"inference.output_prefix={pdb_dir}/out/{pdbname}_diff " \
+                  f"inference.model_runner={conf.diffusion.inference.model_runner} " \
+                  f"inference.ligand={conf.diffusion.inference.ligand} " \
+                  f"inference.num_designs={conf.diffusion.inference.num_designs} " \
+                  f"inference.ckpt_path={conf.diffusion.inference.ckpt_path} " \
+                  f"model.freeze_track_motif={conf.diffusion.model.freeze_track_motif} " \
+                  f"potentials.guiding_potentials=[\\'{conf.diffusion.potentials.guiding_potential}\\'] " \
+                  f"potentials.guide_scale={conf.diffusion.potentials.guide_scale} " \
+                  f"contigmap.contigs=[\\'{conf.contig_map}\\'] " \
+                  f"potentials.guide_decay={conf.diffusion.potentials.guide_decay} " \
+                  f"diffuser.T={conf.diffusion.diffuser.T} " \
+                  "hydra.run.dir="+pdb_dir+"/outputs/\\${now:%Y-%m-%d}/\\${now:%H-%M-%S}"
 
-os.chdir(DIFFUSION_DIR)
+            commands_diffusion.append(cmd)
+            diffusion_rundirs.append(pdbname)
+            file.write(cmd)
 
-N_designs = 10 # JMP. Should ideally make hundreds/thousands of models.
+    print(f"Example diffusion command:\n {cmd}")
 
-## Set up diffusion commands based on the input PDB file(s)
-## Diffusion jobs are run in separate directories for each input PDB
+    print(f"Wrote diffusion commands to {cmds_filename}")
+    print(f"{len(commands_diffusion)} diffusion jobs to run")
 
-commands_diffusion = []
-cmds_filename = "commands_diffusion"
-diffusion_rundirs = []
-with open(cmds_filename, "w") as file:
-    for p in diffusion_inputs:
-        pdbname = os.path.basename(p).replace(".pdb", "")
-        os.makedirs(pdbname, exist_ok=True)
-        cmd = f"cd {pdbname} ; {PYTHON['diffusion']} {diffusion_script} "\
-              f"inference.input_pdb={p} "\
-              f"inference.output_prefix='./out/{pdbname}_diff' "\
-              f"inference.model_runner=NRBStyleSelfCond "\
-              f"inference.ligand=\\'LIG\\' "\
-              f"inference.num_designs={N_designs} "\
-              f"model.freeze_track_motif=True "\
-              f"potentials.guiding_potentials=[\\'type:ligand_ncontacts,weight:1\\'] "\
-              f"potentials.guide_scale=2 "\
-              f"contigmap.contigs=[\\'A1-5,A18-114,7-7,A122-150,14-14,A165-221,A233-328,B1-5,B286-292,8-8,B301-308,C1-5,D1-5,D29-35,5-5,D41-95,9-9,D105-110\\'] "\
-              f"potentials.guide_decay=cubic "\
-              f"diffuser.T=50 ; cd ..\n"
-        commands_diffusion.append(cmd)
-        diffusion_rundirs.append(pdbname)
-        file.write(cmd)
+    log = f"{diffusion_dir}/output.log"
 
-print(f"Example diffusion command:\n {cmd}")
+    if not os.path.exists(diffusion_dir + "/.done"):
+        with open(log, "w") as diff_log:
+            p = subprocess.Popen(['bash', cmds_filename], stdout=diff_log, stderr=diff_log)
+            p.wait()
 
-print(f"Wrote diffusion commands to {cmds_filename}")
-print(f"{len(commands_diffusion)} diffusion jobs to run")
+    ## If you're done with diffusion and happy with the outputs then mark it as done
+    if not os.path.exists(diffusion_dir + "/.done"):
+        with open(f"{diffusion_dir}/.done", "w") as file:
+            file.write(f"done\n")
 
-log = f"{DIFFUSION_DIR}/output.log"
 
-if not os.path.exists(DIFFUSION_DIR+"/.done"):
-    with open(log, "w") as diff_log: 
-        p = subprocess.Popen(['bash', cmds_filename], stdout=diff_log, stderr=diff_log)
-        p.wait()
+@hydra.main(version_base=None, config_path='config', config_name='config')
+def main(conf: HydraConfig) -> None:
+    run_diffusion(conf)
 
-## If you're done with diffusion and happy with the outputs then mark it as done
-DIFFUSION_DIR = f"{WDIR}/0_diffusion"
-os.chdir(DIFFUSION_DIR)
 
-if not os.path.exists(DIFFUSION_DIR+"/.done"):
-    with open(f"{DIFFUSION_DIR}/.done", "w") as file:
-        file.write(f"done\n")
+if __name__ == '__main__':
+    main()

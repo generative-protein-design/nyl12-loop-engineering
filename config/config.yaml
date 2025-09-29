@@ -1,0 +1,26 @@
+base_dir: .
+work_dir: ${base_dir}/output_test
+contig_map: "A1-5,A18-114,7-7,A122-150,14-14,A165-221,A233-328,B1-5,B286-292,8-8,B301-308,C1-5,D1-5,D29-35,5-5,D41-95,9-9,D105-110"
+
+diffusion:
+  input_dir: ${base_dir}/input_test
+  output_dir: ${work_dir}/0_diffusion
+  command: "pixi run run-inference"
+  num_designs: 11
+
+  inference:
+    model_runner: NRBStyleSelfCond
+    ligand: "LIG"
+    num_designs: ${diffusion.num_designs}
+    ckpt_path: /data/jpc/code/rf_diffusion_all_atom/RFDiffusionAA_paper_weights.pt
+
+  model:
+    freeze_track_motif: true
+
+  potentials:
+    guiding_potential: "type:ligand_ncontacts,weight:1"
+    guide_scale: 2
+    guide_decay: cubic
+
+  diffuser:
+    T: 20

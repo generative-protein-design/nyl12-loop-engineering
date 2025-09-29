@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import logging
 from pathlib import Path
@@ -65,7 +67,7 @@ def parse_contig(contig: str) -> ContigDict:
     return res
 
 
-def read_fasta_chains(source: str | TextIO) -> List[Dict[str, Any]]:
+def read_fasta_chains(source) -> List[Dict[str, Any]]:
     """
     Reads FASTA chains from a file path or file-like object.
 
