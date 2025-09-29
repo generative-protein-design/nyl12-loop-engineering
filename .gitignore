@@ -212,3 +212,5 @@ __marimo__/
 
 **/outputs/
 **/out/
+
+**/commands_diffusion.sh
