@@ -16,7 +16,7 @@ export PIXI_CACHE_DIR=/global/cfs/cdirs/xxxx/protein-design/pixi/cache # on NERS
 then install dependencies (will take some time)
 
 ```bash
-pixi install
+pixi install --all
 ```
 
 then download the model weights (if not already present)
@@ -24,6 +24,11 @@ then download the model weights (if not already present)
 ```bash
 wget http://files.ipd.uw.edu/pub/RF-All-Atom/weights/RFDiffusionAA_paper_weights.pt
 ```
+
+
+then install Ligand model params (if not already present)
+
+curl -fsSL https://raw.githubusercontent.com/generative-protein-design/LigandMPNN/refs/heads/main/get_model_params.sh | sh -s -- model_params 
 
 
 ## Running Inference 

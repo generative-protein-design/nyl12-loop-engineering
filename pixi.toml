@@ -14,10 +14,25 @@ channels = [
     "dglteam/label/cu118",
     "pyg",
 ]
-channel-priority = "disabled"  
+channel-priority = "disabled"
 
+[environments]
+rf = ["rf"]
+ligand = ["ligand"]
 
 [dependencies]
+   python = "3.9.*"
+
+[feature.rf.dependencies]
     rf_diffusion_all_atom = "*"
     pytest = "*"
     jinja2 = "*"
+
+[feature.ligand.pypi-dependencies]
+    pd-ligand-mpnn = "*"
+
+[feature.ligand.tasks]
+run-ligand = "run-ligand"
+
+[feature.rf.tasks]
+run-inference = "run-inference"
