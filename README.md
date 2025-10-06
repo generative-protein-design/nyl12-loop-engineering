@@ -2,7 +2,7 @@
 
 ## Installation
 
-Before running the pipeline, install Pixi:
+ Before running the pipeline, install Pixi:
 
 ```bash
 curl -fsSL https://pixi.sh/install.sh | sh
