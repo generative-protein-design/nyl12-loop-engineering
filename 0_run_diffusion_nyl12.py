@@ -6,6 +6,9 @@ import subprocess
 import hydra
 from hydra.core.hydra_config import HydraConfig
 
+def escape_commas(str):
+    return str.replace(",","\\\\,")
+
 
 def run_diffusion(conf):
 
@@ -31,6 +34,8 @@ def run_diffusion(conf):
     cmds_filename = os.path.join(diffusion_dir, "commands_diffusion.sh")
     diffusion_rundirs = []
 
+
+
     with open(cmds_filename, "w") as file:
         for p in diffusion_inputs:
             pdbname = os.path.basename(p).replace(".pdb", "")
@@ -43,9 +48,9 @@ def run_diffusion(conf):
                   f"inference.num_designs={conf.diffusion.inference.num_designs} " \
                   f"inference.ckpt_path={conf.diffusion.inference.ckpt_path} " \
                   f"model.freeze_track_motif={conf.diffusion.model.freeze_track_motif} " \
-                  f"potentials.guiding_potentials=[\\'{conf.diffusion.potentials.guiding_potential}\\'] " \
+                  f"potentials.guiding_potentials=[{escape_commas(conf.diffusion.potentials.guiding_potential)}] " \
                   f"potentials.guide_scale={conf.diffusion.potentials.guide_scale} " \
-                  f"contigmap.contigs=[\\'{conf.contig_map}\\'] " \
+                  f"contigmap.contigs=[{escape_commas(conf.contig_map)}] " \
                   f"potentials.guide_decay={conf.diffusion.potentials.guide_decay} " \
                   f"diffuser.T={conf.diffusion.diffuser.T} " \
                   "hydra.run.dir="+pdb_dir+"/outputs/\\${now:%Y-%m-%d}/\\${now:%H-%M-%S}"
@@ -58,18 +63,6 @@ def run_diffusion(conf):
 
     print(f"Wrote diffusion commands to {cmds_filename}")
     print(f"{len(commands_diffusion)} diffusion jobs to run")
-
-    log = f"{diffusion_dir}/output.log"
-
-    if not os.path.exists(diffusion_dir + "/.done"):
-        with open(log, "w") as diff_log:
-            p = subprocess.Popen(['bash', cmds_filename], stdout=diff_log, stderr=diff_log)
-            p.wait()
-
-    ## If you're done with diffusion and happy with the outputs then mark it as done
-    if not os.path.exists(diffusion_dir + "/.done"):
-        with open(f"{diffusion_dir}/.done", "w") as file:
-            file.write(f"done\n")
 
 
 @hydra.main(version_base=None, config_path='config', config_name='config')

@@ -13,23 +13,30 @@ channels = [
     "protein-design",
     "dglteam/label/cu118",
     "pyg",
+    "bioconda",
 ]
 channel-priority = "disabled"
 
 [environments]
 rf = ["rf"]
 ligand = ["ligand"]
+boltz = ["boltz"]
 
 [dependencies]
    python = "3.9.*"
+   pytest = "*"
+   jinja2 = "*"
+   hydra-core = "*"
+
+[feature.boltz.dependencies]
+    mmseqs2 = "*"
 
 [feature.rf.dependencies]
     rf_diffusion_all_atom = "*"
-    pytest = "*"
-    jinja2 = "*"
 
 [feature.ligand.pypi-dependencies]
-    pd-ligand-mpnn = "*"
+    pd-ligand-mpnn = ">=0.1.2"
+
 
 [feature.ligand.tasks]
 run-ligand = "run-ligand"

@@ -30,3 +30,16 @@ diffusion:
 
   diffuser:
     T: 20
+
+
+## We're doing design with 3 temperatures, and 5 sequences each.
+## This usually gives decent success with designable backbones.
+## For more complicated cases consider doing >100 sequences.
+ligand_mpnn:
+  output_dir: ${work_dir}/1_ligandmpnn
+  make_maskdict_command: "pixi run -e ligand ${base_dir}/scripts/make_maskdict_from_trb.py"
+  command: "pixi run run-ligand"
+  mpnn_temperatures: [0.1, 0.2, 0.3]
+  mpnn_outputs_per_temperature: 5
+  mpnn_omit_AAs: "C"
+  model_params_file: /data/jpc/code/LigandMPNN/model_params/ligandmpnn_v_32_010_25.pt
