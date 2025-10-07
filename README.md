@@ -26,7 +26,7 @@ wget http://files.ipd.uw.edu/pub/RF-All-Atom/weights/RFDiffusionAA_paper_weights
 ```
 
 
-then install Ligand model params (if not already present)
+then install LigandMPNN model params (if not already present)
 
 curl -fsSL https://raw.githubusercontent.com/generative-protein-design/LigandMPNN/refs/heads/main/get_model_params.sh | sh -s -- model_params 
 
@@ -34,7 +34,7 @@ curl -fsSL https://raw.githubusercontent.com/generative-protein-design/LigandMPN
 ## Running Inference 
 
 
-example to run inference (set correct path to downloaded model weights file):
+example to run inference (set correct path to download model weights file):
 ```bash
 pixi run run-inference inference.deterministic=True diffuser.T=20 inference.output_prefix=output/ligand_only/sample inference.input_pdb=input_test/nyl12_jmp.pdb contigmap.contigs=[150-150] inference.ligand=LIG inference.num_designs=1 inference.design_startnum=0 inference.ckpt_path=../RFDiffusionAA_paper_weights.pt
 ```
