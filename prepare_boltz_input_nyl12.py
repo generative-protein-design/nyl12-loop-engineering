@@ -1,11 +1,15 @@
 from __future__ import annotations
 
-import argparse
+import glob
 import logging
+import os
 from pathlib import Path
-from typing import Dict, List, Tuple, Any, TextIO
+from typing import Dict, List, Tuple, Any, TextIO, Optional
 
+import hydra
+from hydra.core.hydra_config import HydraConfig
 from jinja2 import Template
+from omegaconf import OmegaConf
 
 logging.basicConfig(
     level=logging.INFO,
@@ -201,64 +205,97 @@ def get_modified_chains_from_dir(dir_name: str, pattern: str, base_chain: str, p
     return res
 
 
-def render_boltz_input(chain: Dict[str, Any], template_path: str, cif_file: str, molecule_smiles: str):
+def render_boltz_input(chain: Dict[str, Any], template_path: str, cif_file: str, molecule_smiles: str,
+                       msa_file: Optional[str] = None) -> None:
     context = {
         "alpha_seq": chain["modified_alpha"],
         "beta_seq": chain["modified_beta"],
         "smiles": molecule_smiles,
         "cif_file": cif_file,
     }
+    if msa_file:
+        context["msa_file"] = msa_file
     template_path = Path(template_path)
     template_str = template_path.read_text()
     template = Template(template_str)
     return template.render(context)
 
 
-def save_chain(chain: Dict[str, Any], output_dir: str, template_path: str, cif_file: str, molecule_smiles: str) -> None:
-    rendered_input = render_boltz_input(chain, template_path, cif_file, molecule_smiles)
+def save_chain(chain: Dict[str, Any], output_dir: str, template_path: str, cif_file: str, molecule_smiles: str,
+               msa_file: Optional[str] = None) -> None:
+    rendered_input = render_boltz_input(chain, template_path, cif_file, molecule_smiles, msa_file)
 
     fname = f"{chain['name']}_{chain['T']}_{chain['id']}.yaml"
     dir_path = Path(output_dir)
     output_path = dir_path / fname
-    output_path.parent.mkdir(exist_ok=True)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(rendered_input)
 
 
 def save_chains(chains: List[Dict[str, Any]], output_dir: str, template_path: str, cif_file: str,
-                molecule_smiles: str) -> None:
+                molecule_smiles: str, msa_file: Optional[str] = None) -> None:
     logging.info(f"Writing {len(chains)} modified chains to folder {output_dir}")
 
     for chain in chains:
-        save_chain(chain, output_dir, template_path, cif_file, molecule_smiles)
+        save_chain(chain, output_dir, template_path, cif_file, molecule_smiles, msa_file)
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--input-dir", help="Input directory with partialmpnn files")
-    parser.add_argument("--file-pattern", default="nyl12*.fa", help="Fasta file pattern in input directory")
-    parser.add_argument("--base-chain",
-                        default="MAASSTDNILHFDFPEVQIGTAINPEGPTGITLFYFPKGVQASVDIQGGSVGTFFTQEKMQQGEAYLDGVAFTGGGILGLEAVAGAVSSLFADQTKNEVQFRRMPLISGAVIFDYTPRQNMIYPDKALGQKAFAALSAGQFVQGRHGAGVSASVGKLLRDGFQLAGQGGAFAQIGKTKIAVFTVVNAVGVILDEKGEVIYGLPKGATKQTLNQQVTELLQQPKKPFWPEPKNTTLTIVITNEKLAPRHLKQLGRQVHHALSQVIHPYATILDGDVLYTVSTRSIESDLYAPGADIESDLNAKFIYLGMVAGELAKQAVWSAVGYSHRP",
-                        help="Base chain to be modified")
-    parser.add_argument("--partial-chain-start", default="MAASS", help="chain defining start of subchain")
-    parser.add_argument("--betachain-start", default="TTLTIVIT", help="chain defining start of beta chain")
-    parser.add_argument("--cif-file", help="Path to the template cif file")
-    parser.add_argument("--boltz-input-template", default="templates/boltz.yaml.j2",
-                        help="Path to the template file for boltz input")
+def prepare_boltz_command(conf):
+    yaml_dir = Path(conf.boltz.yaml_files_dir)
+    folders = [d for d in yaml_dir.iterdir() if d.is_dir()]
 
-    parser.add_argument("--molecule-smiles", default="CC(=O)NCCCCCC(=O)NCCCCCC(=O)NCCCCCC(=O)NCCCCCC(=O)NCCCCCC(=O)[O-]",
-                        help="Molecule in SMILES format")
-    parser.add_argument("--contig-string",
-                        default="A1-5,A18-114,7-7,A122-150,14-14,A165-221,A233-328,B1-5,B286-292,8-8,B301-308,C1-5,D1-5,D29-35,5-5,D41-95,9-9,D105-110",
-                        help="Contig string defining conditional information and variable regions (RFdiffusion format)")
-    parser.add_argument("--output-dir", help="Output directory with inputs for boltz")
-    args = parser.parse_args()
+    commands_boltz = []
+    for folder in folders:
+        if conf.boltz.batch_processing:
+            boltz_files = [folder.resolve()]
+        else:
+            boltz_files = list(folder.glob("*.yaml"))
 
-    logging.info("Preparing boltz input:\n" + "\n".join(f"  {k}: {v}" for k, v in vars(args).items()))
+        for file in boltz_files:
+            commands_boltz.append(f"{conf.boltz.command} {file} "
+                                  f"--model {conf.boltz.boltz_params.model} "
+                                  f"--output_format {conf.boltz.boltz_params.output_format} "
+                                  f"{'--use_msa_server' if conf.boltz.boltz_params.use_msa_server else ''} "
+                                  f"{'--use_potentials' if conf.boltz.boltz_params.use_potentials else ''} "
+                                  f"--cache {conf.boltz.boltz_params.cache} "
+                                  f"--out_dir {conf.boltz.boltz_params.output_dir}"
+                                  )
 
-    contig_dict = parse_contig(args.contig_string)
-    modified_chains = get_modified_chains_from_dir(args.input_dir, args.file_pattern, args.base_chain,
-                                                   args.partial_chain_start, args.betachain_start, contig_dict)
-    save_chains(modified_chains, args.output_dir, args.boltz_input_template, args.cif_file, args.molecule_smiles)
+    print("Example Boltz command:")
+    print(commands_boltz[-1])
+
+    cmds_filename_boltz = os.path.join(conf.boltz.output_dir, "commands_boltz2.sh")
+    with open(cmds_filename_boltz, "w") as file:
+        file.write("\n".join(commands_boltz))
+
+
+@hydra.main(version_base=None, config_path='config', config_name='config')
+def main(conf: HydraConfig) -> None:
+    conf.base_dir = os.path.abspath(conf.base_dir)
+
+    logging.info(
+        "Preparing boltz inputs:\n" +
+        f"contig_map: {conf.contig_map}\n" +
+        OmegaConf.to_yaml(conf.boltz, resolve=True)
+    )
+
+    contig_dict = parse_contig(conf.contig_map)
+
+    matches = glob.glob(conf.boltz.input_dir_pattern)
+    dirs = [d for d in matches if os.path.isdir(d)]
+
+    for input_dir in dirs:
+        input_file = os.path.basename(os.path.dirname(input_dir))
+
+        modified_chains = get_modified_chains_from_dir(input_dir, conf.boltz.file_pattern, conf.boltz.base_chain,
+                                                       conf.boltz.partial_chain_start, conf.boltz.betachain_start,
+                                                       contig_dict)
+        save_chains(modified_chains, os.path.join(conf.boltz.yaml_files_dir, input_file),
+                    conf.boltz.boltz_input_template, conf.boltz.cif_file,
+                    conf.boltz.molecule_smiles,
+                    conf.boltz.boltz_params.msa if not conf.boltz.boltz_params.use_msa_server else None)
+
+    prepare_boltz_command(conf)
 
 
 if __name__ == "__main__":

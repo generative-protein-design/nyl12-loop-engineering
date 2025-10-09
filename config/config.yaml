@@ -43,3 +43,27 @@ ligand_mpnn:
   mpnn_outputs_per_temperature: 5
   mpnn_omit_AAs: "C"
   model_params_file: /data/jpc/code/LigandMPNN/model_params/ligandmpnn_v_32_010_25.pt
+
+
+boltz:
+    input_dir_pattern: ${ligand_mpnn.output_dir}/*/seqs
+    output_dir: ${work_dir}/2_boltz
+    command: "pixi run boltz predict"
+    yaml_files_dir: ${boltz.output_dir}/input
+    file_pattern: nyl12*.fa
+    base_chain: "MAASSTDNILHFDFPEVQIGTAINPEGPTGITLFYFPKGVQASVDIQGGSVGTFFTQEKMQQGEAYLDGVAFTGGGILGLEAVAGAVSSLFADQTKNEVQFRRMPLISGAVIFDYTPRQNMIYPDKALGQKAFAALSAGQFVQGRHGAGVSASVGKLLRDGFQLAGQGGAFAQIGKTKIAVFTVVNAVGVILDEKGEVIYGLPKGATKQTLNQQVTELLQQPKKPFWPEPKNTTLTIVITNEKLAPRHLKQLGRQVHHALSQVIHPYATILDGDVLYTVSTRSIESDLYAPGADIESDLNAKFIYLGMVAGELAKQAVWSAVGYSHRP"
+    partial_chain_start: "MAASS"
+    betachain_start: "TTLTIVIT"
+    cif_file: "/data/jpc/code/heme_binder_diffusion/cif/Nyl12_refine13_no_tail.cif"
+    boltz_input_template: "templates/boltz.yaml.j2"
+    molecule_smiles: "CC(=O)NCCCCCC(=O)NCCCCCC(=O)NCCCCCC(=O)NCCCCCC(=O)NCCCCCC(=O)[O-]"
+    batch_processing: true
+    boltz_params:
+      model: boltz2
+      output_format: pdb
+      use_msa_server: false
+      msa: /data/jpc/code/msas_try1/nyl12.a3m
+      msa_pairing_strategy: greedy
+      use_potentials: true
+      cache: /data/jpc/code/boltz
+      output_dir: ${boltz.output_dir}

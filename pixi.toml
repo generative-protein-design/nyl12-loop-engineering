@@ -20,26 +20,51 @@ channel-priority = "disabled"
 [environments]
 rf = ["rf"]
 ligand = ["ligand"]
+colabfold = ["colabfold"]
 boltz = ["boltz"]
 
 [dependencies]
-   python = "3.9.*"
-   pytest = "*"
-   jinja2 = "*"
-   hydra-core = "*"
 
 [feature.boltz.dependencies]
+    python = "3.10.*"
+    pytest = "*"
+    jinja2 = "*"
+
+
+[feature.colabfold.dependencies]
+    python = "3.10.*"
     mmseqs2 = "*"
+
+[feature.colabfold.pypi-options]
+index-url = "https://pypi.org/simple"
+extra-index-urls = ["https://example.com/simple"]
+find-links = [{url= 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'}]
+
+[feature.colabfold.pypi-dependencies]
+    colabfold = { git = "git+https://github.com/sokrypton/ColabFold", extras=["alpafold"] }
+    jax = {version=">=0.3.8,<0.4",extras=["cuda"]}
+
+[feature.boltz.pypi-dependencies]
+    boltz = {version="*",extras=["cuda"]}
+    hydra-core = "*"
+
 
 [feature.rf.dependencies]
     rf_diffusion_all_atom = "*"
 
+[feature.ligand.dependencies]
+    python = "*"
+    hydra-core = "*"
+
+
 [feature.ligand.pypi-dependencies]
     pd-ligand-mpnn = ">=0.1.2"
 
-
 [feature.ligand.tasks]
-run-ligand = "run-ligand"
+    run-ligand = "run-ligand"
 
 [feature.rf.tasks]
-run-inference = "run-inference"
+    run-inference = "run-inference"
+
+[feature.boltz.tasks]
+    boltz = "boltz"
