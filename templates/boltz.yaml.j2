@@ -4,13 +4,13 @@ sequences:
       id: [A, B, C, D] # four identical alpha chains
       sequence: {{ alpha_seq }}
 {%- if msa_file %}
-      msa: {{ msa_file }}
+      msa: {{ msa_file }}_alpha.csv
 {%- endif %}
   - protein:
       id: [E, F, G, H] # four identical beta chains
       sequence: {{ beta_seq }}
 {%- if msa_file %}
-      msa: {{ msa_file }}
+      msa: {{ msa_file }}_beta.csv
 {%- endif %}
   - ligand:
       id: I

@@ -49,7 +49,16 @@ boltz:
     input_dir_pattern: ${ligand_mpnn.output_dir}/*/seqs
     output_dir: ${work_dir}/2_boltz
     command: "pixi run boltz predict"
-    yaml_files_dir: ${boltz.output_dir}/input
+    colabfold:
+      search_command: "pixi run -e colabfold colabfold_search"
+      convert_command: "pixi run -e colabfold python ${base_dir}/prepare_msa_files.py"
+      database: /data/jpc/code/database/
+      output_folder: msas
+      fasta_output_folder: fasta
+      merge_fasta: true
+
+    input_files_dir: ${boltz.output_dir}/input
+    yaml_files_dir: yaml
     file_pattern: nyl12*.fa
     base_chain: "MAASSTDNILHFDFPEVQIGTAINPEGPTGITLFYFPKGVQASVDIQGGSVGTFFTQEKMQQGEAYLDGVAFTGGGILGLEAVAGAVSSLFADQTKNEVQFRRMPLISGAVIFDYTPRQNMIYPDKALGQKAFAALSAGQFVQGRHGAGVSASVGKLLRDGFQLAGQGGAFAQIGKTKIAVFTVVNAVGVILDEKGEVIYGLPKGATKQTLNQQVTELLQQPKKPFWPEPKNTTLTIVITNEKLAPRHLKQLGRQVHHALSQVIHPYATILDGDVLYTVSTRSIESDLYAPGADIESDLNAKFIYLGMVAGELAKQAVWSAVGYSHRP"
     partial_chain_start: "MAASS"
@@ -62,7 +71,6 @@ boltz:
       model: boltz2
       output_format: pdb
       use_msa_server: false
-      msa: /data/jpc/code/msas_try1/nyl12.a3m
       msa_pairing_strategy: greedy
       use_potentials: true
       cache: /data/jpc/code/boltz

@@ -42,7 +42,7 @@ def run_diffusion(conf):
             pdb_dir = os.path.join(diffusion_dir, pdbname)
             cmd = f"{conf.diffusion.command} " \
                   f"inference.input_pdb={p} " \
-                  f"inference.output_prefix={pdb_dir}/out/{pdbname}_diff " \
+                  f"inference.output_prefix={pdb_dir}/out/{pdbname} " \
                   f"inference.model_runner={conf.diffusion.inference.model_runner} " \
                   f"inference.ligand={conf.diffusion.inference.ligand} " \
                   f"inference.num_designs={conf.diffusion.inference.num_designs} " \

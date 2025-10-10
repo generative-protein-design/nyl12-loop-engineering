@@ -53,11 +53,11 @@ def run_ligand(conf):
                                      f"--number_of_batches {conf.ligand_mpnn.mpnn_outputs_per_temperature} --temperature {T} "
                                      f"--file_ending _{T} "
                                      f"--omit_AA {conf.ligand_mpnn.mpnn_omit_AAs} --pdb_path {f} "
-                                     f"--checkpoint_ligand_mpnn {conf.ligand_mpnn.model_params_file}\n")
+                                     f"--checkpoint_ligand_mpnn {conf.ligand_mpnn.model_params_file}")
 
     cmds_filename_mpnn = os.path.join(conf.ligand_mpnn.output_dir,"commands_mpnn.sh")
     with open(cmds_filename_mpnn, "w") as file:
-        file.write("".join(commands_mpnn))
+        file.write("\n".join(commands_mpnn))
 
     print("Example MPNN command:")
     print(commands_mpnn[-1])

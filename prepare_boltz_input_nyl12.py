@@ -206,15 +206,15 @@ def get_modified_chains_from_dir(dir_name: str, pattern: str, base_chain: str, p
 
 
 def render_boltz_input(chain: Dict[str, Any], template_path: str, cif_file: str, molecule_smiles: str,
-                       msa_file: Optional[str] = None) -> None:
+                       output_dir: str, conf, msa_file) -> None:
     context = {
         "alpha_seq": chain["modified_alpha"],
         "beta_seq": chain["modified_beta"],
         "smiles": molecule_smiles,
         "cif_file": cif_file,
     }
-    if msa_file:
-        context["msa_file"] = msa_file
+    if not conf.boltz.boltz_params.use_msa_server:
+        context["msa_file"] = os.path.join(output_dir, conf.boltz.colabfold.output_folder, msa_file)
     template_path = Path(template_path)
     template_str = template_path.read_text()
     template = Template(template_str)
@@ -222,34 +222,109 @@ def render_boltz_input(chain: Dict[str, Any], template_path: str, cif_file: str,
 
 
 def save_chain(chain: Dict[str, Any], output_dir: str, template_path: str, cif_file: str, molecule_smiles: str,
-               msa_file: Optional[str] = None) -> None:
-    rendered_input = render_boltz_input(chain, template_path, cif_file, molecule_smiles, msa_file)
+               conf) -> None:
+    chain_name = f"{chain['name']}_{chain['T']}_{chain['id']}"
 
-    fname = f"{chain['name']}_{chain['T']}_{chain['id']}.yaml"
-    dir_path = Path(output_dir)
+    msa_file = f"{chain_name}"
+    rendered_input = render_boltz_input(chain, template_path, cif_file, molecule_smiles, output_dir, conf,
+                                        msa_file)
+
+    fname = f"{chain_name}.yaml"
+    dir_path = Path(output_dir)/ conf.boltz.yaml_files_dir
     output_path = dir_path / fname
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(rendered_input)
 
 
+def save_fasta(conf, chains: List[Dict[str, Any]], output_dir: str):
+    dir_path = Path(output_dir) / conf.boltz.colabfold.fasta_output_folder
+    dir_path.mkdir(parents=True, exist_ok=True)
+
+    if conf.boltz.colabfold.merge_fasta:
+        output_path = dir_path / "fasta.fa"
+        output_path.write_text("")
+    for chain in chains:
+        fasta_input = (
+            f">{chain['name']}_{chain['T']}_{chain['id']}\n"
+            f"{chain['modified_alpha']}:{chain['modified_beta']}"
+        )
+        if not conf.boltz.colabfold.merge_fasta:
+            fname_fasta = f"{chain['name']}_{chain['T']}_{chain['id']}.fa"
+            output_path = dir_path / fname_fasta
+            output_path.write_text(fasta_input)
+        else:
+            with output_path.open("a") as f:
+                f.write(fasta_input + "\n")  # add newline if needed
+
+
 def save_chains(chains: List[Dict[str, Any]], output_dir: str, template_path: str, cif_file: str,
-                molecule_smiles: str, msa_file: Optional[str] = None) -> None:
+                molecule_smiles: str, conf) -> None:
     logging.info(f"Writing {len(chains)} modified chains to folder {output_dir}")
 
     for chain in chains:
-        save_chain(chain, output_dir, template_path, cif_file, molecule_smiles, msa_file)
+        save_chain(chain, output_dir, template_path, cif_file, molecule_smiles, conf)
+
+
+def prepare_colabfold_search_command(conf):
+    input_files_dir = Path(conf.boltz.input_files_dir)
+    folders = [d for d in input_files_dir.iterdir() if d.is_dir()]
+
+    commands_colabfold = []
+    for folder in folders:
+        fasta_folder = folder / conf.boltz.colabfold.fasta_output_folder
+        colabfold_files = list(fasta_folder.glob("*.fa"))
+
+        for file in colabfold_files:
+            commands_colabfold.append(f"{conf.boltz.colabfold.search_command} {file} "
+                                  f"{conf.boltz.colabfold.database} {folder / conf.boltz.colabfold.output_folder}"
+                                  )
+
+    print("Example colabfold_search command:")
+    print(commands_colabfold[-1])
+
+    cmds_filename_colabfold = os.path.join(conf.boltz.output_dir, "commands_colabfold_search.sh")
+    with open(cmds_filename_colabfold, "w") as file:
+        file.write("\n".join(commands_colabfold))
+
+
+def prepare_msas_convert(conf):
+    input_files_dir = Path(conf.boltz.input_files_dir)
+    folders = [d for d in input_files_dir.iterdir() if d.is_dir()]
+
+    commands_msas_convert = []
+    for folder in folders:
+        boltz_yaml_folder = folder / conf.boltz.yaml_files_dir
+        boltz_files = list(boltz_yaml_folder.glob("*.yaml"))
+        output_folder = folder / conf.boltz.colabfold.output_folder
+        for file in boltz_files:
+            msas_file = output_folder / file.name.replace(".yaml",".a3m")
+            csv_file_alpha = str(output_folder / file.name.replace(".yaml", "")) + "_alpha.csv"
+            csv_file_beta = str(output_folder / file.name.replace(".yaml", "")) + "_beta.csv"
+            commands_msas_convert.append(f"{conf.boltz.colabfold.convert_command}  --msas_file {msas_file} "
+                                  f" --csv_alpha {csv_file_alpha}  --csv_beta {csv_file_beta}"
+                                  )
+
+    print("Example msas_convert command:")
+    print(commands_msas_convert[-1])
+
+    cmds_filename_colabfold = os.path.join(conf.boltz.output_dir, "commands_msas_convert.sh")
+    with open(cmds_filename_colabfold, "w") as file:
+        file.write("\n".join(commands_msas_convert))
+
 
 
 def prepare_boltz_command(conf):
-    yaml_dir = Path(conf.boltz.yaml_files_dir)
-    folders = [d for d in yaml_dir.iterdir() if d.is_dir()]
+    input_files_dir = Path(conf.boltz.input_files_dir)
+    folders = [d for d in input_files_dir.iterdir() if d.is_dir()]
 
     commands_boltz = []
     for folder in folders:
+        boltz_yaml_folder = folder / conf.boltz.yaml_files_dir
+
         if conf.boltz.batch_processing:
-            boltz_files = [folder.resolve()]
+            boltz_files = [boltz_yaml_folder.resolve()]
         else:
-            boltz_files = list(folder.glob("*.yaml"))
+            boltz_files = list(boltz_yaml_folder.glob("*.yaml"))
 
         for file in boltz_files:
             commands_boltz.append(f"{conf.boltz.command} {file} "
@@ -258,7 +333,7 @@ def prepare_boltz_command(conf):
                                   f"{'--use_msa_server' if conf.boltz.boltz_params.use_msa_server else ''} "
                                   f"{'--use_potentials' if conf.boltz.boltz_params.use_potentials else ''} "
                                   f"--cache {conf.boltz.boltz_params.cache} "
-                                  f"--out_dir {conf.boltz.boltz_params.output_dir}"
+                                  f"--out_dir {conf.boltz.boltz_params.output_dir}/{folder.name}"
                                   )
 
     print("Example Boltz command:")
@@ -290,13 +365,16 @@ def main(conf: HydraConfig) -> None:
         modified_chains = get_modified_chains_from_dir(input_dir, conf.boltz.file_pattern, conf.boltz.base_chain,
                                                        conf.boltz.partial_chain_start, conf.boltz.betachain_start,
                                                        contig_dict)
-        save_chains(modified_chains, os.path.join(conf.boltz.yaml_files_dir, input_file),
+        save_chains(modified_chains, os.path.join(conf.boltz.input_files_dir, input_file),
                     conf.boltz.boltz_input_template, conf.boltz.cif_file,
                     conf.boltz.molecule_smiles,
-                    conf.boltz.boltz_params.msa if not conf.boltz.boltz_params.use_msa_server else None)
+                    conf)
 
+        if not conf.boltz.boltz_params.use_msa_server:
+            save_fasta(conf, modified_chains, os.path.join(conf.boltz.input_files_dir, input_file))
     prepare_boltz_command(conf)
-
-
+    if not conf.boltz.boltz_params.use_msa_server:
+        prepare_colabfold_search_command(conf)
+        prepare_msas_convert(conf)
 if __name__ == "__main__":
     main()
