@@ -6,6 +6,8 @@ hydra:
   run:
     dir: ${base_dir}
 
+
+
 contig_map: "A1-5,A18-114,7-7,A122-150,14-14,A165-221,A233-328,B1-5,B286-292,8-8,B301-308,C1-5,D1-5,D29-35,5-5,D41-95,9-9,D105-110"
 
 diffusion:
@@ -66,7 +68,7 @@ boltz:
     cif_file: "/data/jpc/code/heme_binder_diffusion/cif/Nyl12_refine13_no_tail.cif"
     boltz_input_template: "templates/boltz.yaml.j2"
     molecule_smiles: "CC(=O)NCCCCCC(=O)NCCCCCC(=O)NCCCCCC(=O)NCCCCCC(=O)NCCCCCC(=O)[O-]"
-    batch_processing: true
+    batch_processing: false
     boltz_params:
       model: boltz2
       output_format: pdb
