@@ -3,7 +3,8 @@
 set -e
 
 export NTASKS=2
-export OUTPUT_FOLDER=output_test
+
+export OUTPUT_FOLDER=`pixi run -e rf python -c "from omegaconf import OmegaConf; from pathlib import Path; cfg = OmegaConf.load('config/config.yaml'); print(Path(cfg.work_dir).name)"`
 
 run_task() {
     local DONE="$1"
@@ -37,7 +38,7 @@ CMD
 
 pixi run -e boltz python prepare_boltz_input_nyl12.py +site=aster
 
-run_task colabfold <<'CMD'
+run_task colabfold_search <<'CMD'
 bash ${OUTPUT_FOLDER}/2_boltz/commands_colabfold_search.sh
 CMD
 
@@ -47,4 +48,8 @@ CMD
 
 run_task boltz <<'CMD'
 parallel -j $NTASKS --ungroup CUDA_VISIBLE_DEVICES='$(({%} - 1))' bash -c "{}" :::: ${OUTPUT_FOLDER}/2_boltz/commands_boltz2.sh
+CMD
+
+run_task postprocess <<'CMD'
+pixi run -e pymol python postprocess_boltz.py +site=aster
 CMD

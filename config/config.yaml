@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 base_dir: .
-work_dir: ${base_dir}/output_test
+work_dir: ${base_dir}/output_xama
 
 hydra:
   output_subdir: null
@@ -35,7 +35,7 @@ diffusion:
     guide_decay: cubic
 
   diffuser:
-    T: 20
+    T: 50
 
 
 ## We're doing design with 3 temperatures, and 5 sequences each.
@@ -65,7 +65,7 @@ boltz:
 
     input_files_dir: ${boltz.output_dir}/input
     yaml_files_dir: yaml
-    file_pattern: nyl12*.fa
+    file_pattern: "*.fa"
     base_chain: "MAASSTDNILHFDFPEVQIGTAINPEGPTGITLFYFPKGVQASVDIQGGSVGTFFTQEKMQQGEAYLDGVAFTGGGILGLEAVAGAVSSLFADQTKNEVQFRRMPLISGAVIFDYTPRQNMIYPDKALGQKAFAALSAGQFVQGRHGAGVSASVGKLLRDGFQLAGQGGAFAQIGKTKIAVFTVVNAVGVILDEKGEVIYGLPKGATKQTLNQQVTELLQQPKKPFWPEPKNTTLTIVITNEKLAPRHLKQLGRQVHHALSQVIHPYATILDGDVLYTVSTRSIESDLYAPGADIESDLNAKFIYLGMVAGELAKQAVWSAVGYSHRP"
     partial_chain_start: "MAASS"
     betachain_start: "TTLTIVIT"
@@ -102,3 +102,14 @@ boltz:
     properties:
       - affinity:
            binder: I
+
+postprocessing:
+  output_dir: ${work_dir}/final
+  atom_selections_file: ${base_dir}/config/atom_selections.csv
+  d1_max: 3.2
+  d2_max: 3.8
+  d3_max: 3.8
+  a1_min: 70.0
+  a1_max: 120.0
+  t1_min: 70.0
+  t1_max: 110.0

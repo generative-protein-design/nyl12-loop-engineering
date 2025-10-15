@@ -304,14 +304,14 @@ def prepare_msas_convert(conf):
 
     commands_msas_convert = []
     for folder in folders:
-        boltz_yaml_folder = folder / conf.boltz.yaml_files_dir
-        boltz_files = list(boltz_yaml_folder.glob("*.yaml"))
-        output_folder = folder / conf.boltz.colabfold.output_folder
-        for file in boltz_files:
-            msas_file = output_folder / file.name.replace(".yaml", ".a3m")
-            csv_file_alpha = str(output_folder / file.name.replace(".yaml", "")) + "_alpha.csv"
-            csv_file_beta = str(output_folder / file.name.replace(".yaml", "")) + "_beta.csv"
-            commands_msas_convert.append(f"{conf.boltz.colabfold.convert_command}  --msas_file {msas_file} "
+        colabfold_search_output_folder = folder / conf.boltz.colabfold.output_folder
+        msas_files = list(colabfold_search_output_folder.glob("*.a3m"))
+        for file in msas_files:
+            if file.name[:-4].isdigit():
+                continue
+            csv_file_alpha = str(colabfold_search_output_folder / file.name.replace(".a3m", "")) + "_alpha.csv"
+            csv_file_beta = str(colabfold_search_output_folder / file.name.replace(".a3m", "")) + "_beta.csv"
+            commands_msas_convert.append(f"{conf.boltz.colabfold.convert_command}  --msas_file {file} "
                                          f" --csv_alpha {csv_file_alpha}  --csv_beta {csv_file_beta}"
                                          )
 

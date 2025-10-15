@@ -14,6 +14,7 @@ channels = [
     "dglteam/label/cu118",
     "pyg",
     "bioconda",
+    "schrodinger"
 ]
 channel-priority = "disabled"
 
@@ -22,6 +23,7 @@ rf = ["rf"]
 ligand = ["ligand"]
 colabfold = ["colabfold"]
 boltz = ["boltz"]
+pymol = ["pymol"]
 
 [dependencies]
 
@@ -30,6 +32,14 @@ boltz = ["boltz"]
     pytest = "*"
     jinja2 = "*"
 
+
+[feature.pymol.dependencies]
+    python = "3.10.*"
+    pymol-bundle = "*"
+    pandas = "*"
+    natsort = "*"
+    tabulate = "*"
+    hydra-core = "*"
 
 [feature.colabfold.dependencies]
     python = "3.10.*"
@@ -53,9 +63,8 @@ find-links = [{url= 'https://storage.googleapis.com/jax-releases/jax_cuda_releas
     rf_diffusion_all_atom = "*"
 
 [feature.ligand.dependencies]
-    python = "*"
+    python = "3.9.*"
     hydra-core = "*"
-
 
 [feature.ligand.pypi-dependencies]
     pd-ligand-mpnn = ">=0.1.2"
