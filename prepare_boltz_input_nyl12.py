@@ -8,7 +8,10 @@ from typing import Dict, List, Tuple, Any, TextIO, Optional
 
 import hydra
 from hydra.core.hydra_config import HydraConfig
-from jinja2 import Template
+import yaml
+from jinja2 import Template, Environment
+
+
 from omegaconf import OmegaConf
 
 logging.basicConfig(
@@ -212,12 +215,18 @@ def render_boltz_input(chain: Dict[str, Any], template_path: str, cif_file: str,
         "beta_seq": chain["modified_beta"],
         "smiles": molecule_smiles,
         "cif_file": cif_file,
+        "constraints": OmegaConf.to_container(conf.boltz.constraints, resolve=True),
+        "properties": OmegaConf.to_container(conf.boltz.properties, resolve=True),
     }
     if not conf.boltz.boltz_params.use_msa_server:
         context["msa_file"] = os.path.join(output_dir, conf.boltz.colabfold.output_folder, msa_file)
     template_path = Path(template_path)
     template_str = template_path.read_text()
-    template = Template(template_str)
+
+    env = Environment()
+    env.filters['to_yaml'] = lambda value: yaml.safe_dump(value, default_flow_style=False, sort_keys=False)
+
+    template = env.from_string(template_str)
     return template.render(context)
 
 
@@ -229,11 +238,13 @@ def save_chain(chain: Dict[str, Any], output_dir: str, template_path: str, cif_f
     rendered_input = render_boltz_input(chain, template_path, cif_file, molecule_smiles, output_dir, conf,
                                         msa_file)
 
-    fname = f"{chain_name}.yaml"
-    dir_path = Path(output_dir)/ conf.boltz.yaml_files_dir
-    output_path = dir_path / fname
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(rendered_input)
+
+    for model in range(conf.boltz.models_per_sequence):
+        fname = f"{chain_name}_model_{model}.yaml"
+        dir_path = Path(output_dir) / conf.boltz.yaml_files_dir
+        output_path = dir_path / fname
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(rendered_input)
 
 
 def save_fasta(conf, chains: List[Dict[str, Any]], output_dir: str):
@@ -259,7 +270,7 @@ def save_fasta(conf, chains: List[Dict[str, Any]], output_dir: str):
 
 def save_chains(chains: List[Dict[str, Any]], output_dir: str, template_path: str, cif_file: str,
                 molecule_smiles: str, conf) -> None:
-    logging.info(f"Writing {len(chains)} modified chains to folder {output_dir}")
+    logging.info(f"Writing {len(chains)} modified chains/{conf.boltz.models_per_sequence} model(s) each to folder {output_dir}")
 
     for chain in chains:
         save_chain(chain, output_dir, template_path, cif_file, molecule_smiles, conf)
@@ -276,8 +287,8 @@ def prepare_colabfold_search_command(conf):
 
         for file in colabfold_files:
             commands_colabfold.append(f"{conf.boltz.colabfold.search_command} {file} "
-                                  f"{conf.boltz.colabfold.database} {folder / conf.boltz.colabfold.output_folder}"
-                                  )
+                                      f"{conf.boltz.colabfold.database} {folder / conf.boltz.colabfold.output_folder}"
+                                      )
 
     print("Example colabfold_search command:")
     print(commands_colabfold[-1])
@@ -297,12 +308,12 @@ def prepare_msas_convert(conf):
         boltz_files = list(boltz_yaml_folder.glob("*.yaml"))
         output_folder = folder / conf.boltz.colabfold.output_folder
         for file in boltz_files:
-            msas_file = output_folder / file.name.replace(".yaml",".a3m")
+            msas_file = output_folder / file.name.replace(".yaml", ".a3m")
             csv_file_alpha = str(output_folder / file.name.replace(".yaml", "")) + "_alpha.csv"
             csv_file_beta = str(output_folder / file.name.replace(".yaml", "")) + "_beta.csv"
             commands_msas_convert.append(f"{conf.boltz.colabfold.convert_command}  --msas_file {msas_file} "
-                                  f" --csv_alpha {csv_file_alpha}  --csv_beta {csv_file_beta}"
-                                  )
+                                         f" --csv_alpha {csv_file_alpha}  --csv_beta {csv_file_beta}"
+                                         )
 
     print("Example msas_convert command:")
     print(commands_msas_convert[-1])
@@ -310,7 +321,6 @@ def prepare_msas_convert(conf):
     cmds_filename_colabfold = os.path.join(conf.boltz.output_dir, "commands_msas_convert.sh")
     with open(cmds_filename_colabfold, "w") as file:
         file.write("\n".join(commands_msas_convert))
-
 
 
 def prepare_boltz_command(conf):
@@ -332,10 +342,15 @@ def prepare_boltz_command(conf):
                                   f"--output_format {conf.boltz.boltz_params.output_format} "
                                   f"{'--use_msa_server' if conf.boltz.boltz_params.use_msa_server else ''} "
                                   f"{'--use_potentials' if conf.boltz.boltz_params.use_potentials else ''} "
+                                  f"{'--affinity_mw_correction' if conf.boltz.boltz_params.affinity_mw_correction else ''} "
+                                  f"{'--no_kernels' if conf.boltz.boltz_params.no_kernels else ''} "
                                   f"--cache {conf.boltz.boltz_params.cache} "
+                                  f"--recycling_steps {conf.boltz.boltz_params.recycling_steps} "
+                                  f"--sampling_steps {conf.boltz.boltz_params.sampling_steps} "
+                                  f"--diffusion_samples {conf.boltz.boltz_params.diffusion_samples} "
+                                  f"{conf.boltz.boltz_params.extra_params if conf.boltz.boltz_params.extra_params else ''} "
                                   f"--out_dir {conf.boltz.boltz_params.output_dir}/{folder.name}"
                                   )
-
     print("Example Boltz command:")
     print(commands_boltz[-1])
 
@@ -376,5 +391,7 @@ def main(conf: HydraConfig) -> None:
     if not conf.boltz.boltz_params.use_msa_server:
         prepare_colabfold_search_command(conf)
         prepare_msas_convert(conf)
+
+
 if __name__ == "__main__":
     main()
