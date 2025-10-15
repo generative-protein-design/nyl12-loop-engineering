@@ -37,7 +37,6 @@ CMD
 
 pixi run -e boltz python prepare_boltz_input_nyl12.py +site=aster
 
-
 run_task colabfold <<'CMD'
 bash ${OUTPUT_FOLDER}/2_boltz/commands_colabfold_search.sh
 CMD

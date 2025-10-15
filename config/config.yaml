@@ -1,3 +1,8 @@
+defaults:
+  - override hydra/job_logging: none
+  - override hydra/hydra_logging: none
+  - _self_
+
 base_dir: .
 work_dir: ${base_dir}/output_test
 
@@ -5,7 +10,6 @@ hydra:
   output_subdir: null
   run:
     dir: ${base_dir}
-
 
 
 contig_map: "A1-5,A18-114,7-7,A122-150,14-14,A165-221,A233-328,B1-5,B286-292,8-8,B301-308,C1-5,D1-5,D29-35,5-5,D41-95,9-9,D105-110"
