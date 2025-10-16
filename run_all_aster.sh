@@ -25,13 +25,13 @@ run_task() {
 #rf-diffusion
 run_task rf_diffusion <<'CMD'
 pixi run -e rf python 0_run_diffusion_nyl12.py +site=aster
-parallel -j $NTASKS --ungroup bash -c "{}" :::: ${OUTPUT_FOLDER}/0_diffusion/commands_diffusion.sh
+parallel --halt soon,fail=1 -j $NTASKS --ungroup bash -c "{}" :::: ${OUTPUT_FOLDER}/0_diffusion/commands_diffusion.sh
 CMD
 
 #ligand-mpnn
 run_task ligand_mpnn <<'CMD'
 pixi run -e ligand python 1_ligandmpnn_nyl12.py +site=aster
-parallel -j $NTASKS --ungroup bash -c "{}" :::: ${OUTPUT_FOLDER}/1_ligandmpnn/commands_mpnn.sh
+parallel --halt soon,fail=1 -j $NTASKS --ungroup bash -c "{}" :::: ${OUTPUT_FOLDER}/1_ligandmpnn/commands_mpnn.sh
 CMD
 
 #boltz2
@@ -43,11 +43,11 @@ bash ${OUTPUT_FOLDER}/2_boltz/commands_colabfold_search.sh
 CMD
 
 run_task msas_convert <<'CMD'
-parallel -j $NTASKS --ungroup bash -c "{}" :::: ${OUTPUT_FOLDER}/2_boltz/commands_msas_convert.sh
+parallel --halt soon,fail=1 -j $NTASKS --ungroup bash -c "{}" :::: ${OUTPUT_FOLDER}/2_boltz/commands_msas_convert.sh
 CMD
 
 run_task boltz <<'CMD'
-parallel -j $NTASKS --ungroup CUDA_VISIBLE_DEVICES='$(({%} - 1))' bash -c "{}" :::: ${OUTPUT_FOLDER}/2_boltz/commands_boltz2.sh
+parallel --halt soon,fail=1 -j $NTASKS --ungroup CUDA_VISIBLE_DEVICES='$(({%} - 1))' bash -c "{}" :::: ${OUTPUT_FOLDER}/2_boltz/commands_boltz2.sh
 CMD
 
 run_task postprocess <<'CMD'

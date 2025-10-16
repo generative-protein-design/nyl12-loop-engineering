@@ -109,7 +109,7 @@ postprocessing:
   d1_max: 3.2
   d2_max: 3.8
   d3_max: 3.8
-  a1_min: 70.0
+  a1_min: 80.0
   a1_max: 120.0
   t1_min: 70.0
   t1_max: 110.0
