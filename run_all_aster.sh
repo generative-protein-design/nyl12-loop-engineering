@@ -51,5 +51,5 @@ parallel --halt soon,fail=1 -j $NTASKS --ungroup CUDA_VISIBLE_DEVICES='$(({%} - 
 CMD
 
 run_task postprocess <<'CMD'
-pixi run -e pymol python postprocess_boltz.py +site=aster
+pixi run -e pymol python analyze_boltz_models.py +site=aster
 CMD
