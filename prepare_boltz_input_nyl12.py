@@ -305,13 +305,14 @@ def prepare_msas_convert(conf):
     commands_msas_convert = []
     for folder in folders:
         colabfold_search_output_folder = folder / conf.boltz.colabfold.output_folder
-        msas_files = list(colabfold_search_output_folder.glob("*.a3m"))
-        for file in msas_files:
-            if file.name[:-4].isdigit():
-                continue
-            csv_file_alpha = str(colabfold_search_output_folder / file.name.replace(".a3m", "")) + "_alpha.csv"
-            csv_file_beta = str(colabfold_search_output_folder / file.name.replace(".a3m", "")) + "_beta.csv"
-            commands_msas_convert.append(f"{conf.boltz.colabfold.convert_command}  --msas_file {file} "
+        yaml_output_folder = folder / conf.boltz.yaml_files_dir
+        yaml_files = list(yaml_output_folder.glob("*_model_0.yaml"))
+        for file in yaml_files:
+            fname = str(colabfold_search_output_folder / file.name.replace("_model_0.yaml", ""))
+            csv_file_alpha = fname + "_alpha.csv"
+            csv_file_beta = fname + "_beta.csv"
+            msas_file = fname + ".a3m"
+            commands_msas_convert.append(f"{conf.boltz.colabfold.convert_command}  --msas_file {msas_file} "
                                          f" --csv_alpha {csv_file_alpha}  --csv_beta {csv_file_beta}"
                                          )
 
@@ -373,13 +374,14 @@ def main(conf: HydraConfig) -> None:
 
     matches = glob.glob(conf.boltz.input_dir_pattern)
     dirs = [d for d in matches if os.path.isdir(d)]
-
+    all_modified_chains = []
     for input_dir in dirs:
         input_file = os.path.basename(os.path.dirname(input_dir))
 
         modified_chains = get_modified_chains_from_dir(input_dir, conf.boltz.file_pattern, conf.boltz.base_chain,
                                                        conf.boltz.partial_chain_start, conf.boltz.betachain_start,
                                                        contig_dict)
+        all_modified_chains += modified_chains
         save_chains(modified_chains, os.path.join(conf.boltz.input_files_dir, input_file),
                     conf.boltz.boltz_input_template, conf.boltz.cif_file,
                     conf.boltz.molecule_smiles,
