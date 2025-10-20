@@ -89,6 +89,9 @@ def main(conf: HydraConfig) -> None:
 
     base_path = Path(conf.boltz.output_dir)
 
+    Path(conf.postprocessing.output_dir).mkdir(parents=True, exist_ok=True)
+
+
     # Load atoms of interest from CSV
     atoms = load_atoms_from_csv(conf.postprocessing.atom_selections_file)
 
