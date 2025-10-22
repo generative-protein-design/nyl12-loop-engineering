@@ -4,7 +4,9 @@ set -e
 
 export NTASKS=2
 
-export OUTPUT_FOLDER=`pixi run -e rf python -c "from omegaconf import OmegaConf; from pathlib import Path; cfg = OmegaConf.load('config/config.yaml'); print(Path(cfg.work_dir).name)"`
+export CONFIG_NAME=${1:-config}
+
+export OUTPUT_FOLDER=$(pixi run -e rf python -c "from omegaconf import OmegaConf; from pathlib import Path; cfg = OmegaConf.load('config/${CONFIG_NAME}.yaml'); print(Path(cfg.work_dir).name)")
 
 run_task() {
     local DONE="$1"
@@ -24,19 +26,20 @@ run_task() {
 
 #rf-diffusion
 run_task rf_diffusion <<'CMD'
-pixi run -e rf python 0_run_diffusion_nyl12.py +site=aster
+pixi run -e rf python 0_run_diffusion_nyl12.py +site=aster --config-name=$CONFIG_NAME
 parallel --halt soon,fail=1 -j $NTASKS --ungroup bash -c "{}" :::: ${OUTPUT_FOLDER}/0_diffusion/commands_diffusion.sh
 CMD
 
 #ligand-mpnn
 run_task ligand_mpnn <<'CMD'
-pixi run -e ligand python 1_ligandmpnn_nyl12.py +site=aster
+pixi run -e ligand python 1_ligandmpnn_nyl12.py +site=aster --config-name=$CONFIG_NAME
 parallel --halt soon,fail=1 -j $NTASKS --ungroup bash -c "{}" :::: ${OUTPUT_FOLDER}/1_ligandmpnn/commands_mpnn.sh
 CMD
 
 #boltz2
 
-pixi run -e boltz python prepare_boltz_input_nyl12.py +site=aster
+pixi run -e boltz python prepare_boltz_input_nyl12.py +site=aster --config-name=$CONFIG_NAME
+
 
 run_task colabfold_search <<'CMD'
 bash ${OUTPUT_FOLDER}/2_boltz/commands_colabfold_search.sh
@@ -51,5 +54,5 @@ parallel --halt soon,fail=1 -j $NTASKS --ungroup CUDA_VISIBLE_DEVICES='$(({%} - 
 CMD
 
 run_task postprocess <<'CMD'
-pixi run -e pymol python analyze_boltz_models.py +site=aster
+pixi run -e pymol python analyze_boltz_models.py +site=aster --config-name=$CONFIG_NAME
 CMD

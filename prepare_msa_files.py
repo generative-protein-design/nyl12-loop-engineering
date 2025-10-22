@@ -180,7 +180,7 @@ MAX_MSA_SEQS = 16384
 
 def write_csv(paired_msas, unpaired_msas, file1, file2):
     fnames = [file1, file2]
-    for idx in range(2):
+    for idx in range(len(paired_msas)):
         # Get paired sequences
         paired = [ s.sequence for s in paired_msas[idx]]
         paired = paired[: MAX_PAIRED_SEQS]

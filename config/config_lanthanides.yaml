@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 base_dir: .
-work_dir: ${base_dir}/output_xama
+work_dir: ${base_dir}/output_lanthanides
 
 hydra:
   output_subdir: null
@@ -12,17 +12,17 @@ hydra:
     dir: ${base_dir}
 
 
-contig_map: "A1-5,A18-114,7-7,A122-150,14-14,A165-221,A233-328,B1-5,B286-292,8-8,B301-308,C1-5,D1-5,D29-35,5-5,D41-95,9-9,D105-110"
+contig_map: "58-58,A59-70,13-13,A84-95,40-40"
 
 diffusion:
-  input_dir: ${base_dir}/input_test
+  input_dir: ${base_dir}/input_lanthanides
   output_dir: ${work_dir}/0_diffusion
   command: "pixi run run-inference"
-  num_designs: 11
+  num_designs: 1
 
   inference:
     model_runner: NRBStyleSelfCond
-    ligand: "LIG"
+    ligand: "CA"
     num_designs: ${diffusion.num_designs}
     ckpt_path: /data/jpc/code/rf_diffusion_all_atom/RFDiffusionAA_paper_weights.pt
 
@@ -38,9 +38,6 @@ diffusion:
     T: 50
 
 
-## We're doing design with 3 temperatures, and 5 sequences each.
-## This usually gives decent success with designable backbones.
-## For more complicated cases consider doing >100 sequences.
 ligand_mpnn:
   output_dir: ${work_dir}/1_ligandmpnn
   make_maskdict_command: "pixi run -e ligand ${base_dir}/scripts/make_maskdict_from_trb.py"
@@ -66,12 +63,12 @@ boltz:
     input_files_dir: ${boltz.output_dir}/input
     yaml_files_dir: yaml
     file_pattern: "*.fa"
-    base_chain: "MAASSTDNILHFDFPEVQIGTAINPEGPTGITLFYFPKGVQASVDIQGGSVGTFFTQEKMQQGEAYLDGVAFTGGGILGLEAVAGAVSSLFADQTKNEVQFRRMPLISGAVIFDYTPRQNMIYPDKALGQKAFAALSAGQFVQGRHGAGVSASVGKLLRDGFQLAGQGGAFAQIGKTKIAVFTVVNAVGVILDEKGEVIYGLPKGATKQTLNQQVTELLQQPKKPFWPEPKNTTLTIVITNEKLAPRHLKQLGRQVHHALSQVIHPYATILDGDVLYTVSTRSIESDLYAPGADIESDLNAKFIYLGMVAGELAKQAVWSAVGYSHRP"
-    partial_chain_start: "MAASS"
-    betachain_start: "TTLTIVIT"
-    cif_file: "/data/jpc/code/heme_binder_diffusion/cif/Nyl12_refine13_no_tail.cif"
-    boltz_input_template: "templates/boltz.yaml.j2"
-    molecule_smiles: "CC(NCC(C=C1)=CC=C1CNC(CCCCC(NCCCCCCNC(CCCCC(NC)=O)=O)=O)=O)=O"
+    base_chain: "VDIAAFDPDKDGTIDLKEALAAGSAAFDKLDPDKDGTLDAKELKGRVSEADLKKLDPDNDGTLDKKEYLAAVEAQFKAANPDNDGTIDARELASPAGSALVNLIRAGAAAAAAAAGAAAAAGASAASSAASSLSS"
+    partial_chain_start: null
+    betachain_start: null
+    cif_file: "/data/jpc/code/nyl12-loop-engineering/input_test/8fns.cif"
+    boltz_input_template: "templates/boltz_lanthanides.yaml.j2"
+    molecule_smiles: "[Nd3+]"
     batch_processing: false
     models_per_sequence: 5
     boltz_params:
@@ -82,29 +79,18 @@ boltz:
       use_potentials: true
       cache: /data/jpc/code/boltz
       output_dir: ${boltz.output_dir}
-      affinity_mw_correction: true
+      affinity_mw_correction: False
       recycling_steps: 3
       sampling_steps: 200
       diffusion_samples: 1
       no_kernels: true
       extra_params: ""
-    constraints:
-      - contact:
-           token1: [E, 1]
-           token2: [I, C57]
-           max_distance: 3.0
-           force: true
-      - contact:
-           token1: [A, 186]
-           token2: [I, O52]
-           max_distance: 3.2
-           force: true
-    properties:
-      - affinity:
-           binder: I
+
+    constraints: []
+    properties: []
 
 postprocessing:
-  enable: true
+  enable: false
   output_dir: ${work_dir}/final
   atom_selections_file: ${base_dir}/config/atom_selections.csv
   d1_max: 3.2

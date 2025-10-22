@@ -11,7 +11,6 @@ from hydra.core.hydra_config import HydraConfig
 import yaml
 from jinja2 import Template, Environment
 
-
 from omegaconf import OmegaConf
 
 logging.basicConfig(
@@ -37,7 +36,7 @@ def parse_contig(contig: str) -> ContigDict:
     }
     """
 
-    cur_chain = None
+    cur_chain = 'A'
     intervals = contig.split(",")
     reduced_index = 0
     prev_end_index = 0
@@ -161,14 +160,17 @@ def update_base_chain_from_partial(base_chain_list: List[Tuple[int, str]], parti
         base_chain_list[i1:i2 + 1] = replace
 
 
-def calculate_modified_chain(base_chain: str, merged_partial_chain: str, partial_chain_start: str,
+def calculate_modified_chain(base_chain: str, merged_partial_chain: str, partial_chain_start: Optional[str],
                              contig_dict: ContigDict) -> str:
     """
     Calculate a single modified chain by replacing residues at indices
     based on a mapping parsed from a contig string.
     """
-    partial_chains = merged_partial_chain.split(partial_chain_start)[1:]
-    partial_chains = [partial_chain_start + partial_chain for partial_chain in partial_chains]
+    if partial_chain_start:
+        partial_chains = merged_partial_chain.split(partial_chain_start)[1:]
+        partial_chains = [partial_chain_start + partial_chain for partial_chain in partial_chains]
+    else:
+        partial_chains=[merged_partial_chain]
     # convert string representation to list, to simplify modification
     chain_list = chain_to_list(base_chain)
     for i, partial_chain in enumerate(partial_chains):
@@ -176,13 +178,17 @@ def calculate_modified_chain(base_chain: str, merged_partial_chain: str, partial
     return list_to_chain(chain_list)
 
 
-def split_chain(chain: str, alpha_beta_split_string: str) -> Tuple[str, str]:
-    alpha, beta = chain.split(alpha_beta_split_string, 1)
-    return alpha, alpha_beta_split_string + beta
+def split_chain(chain: str, alpha_beta_split_string: Optional[str]) -> Tuple[str, str]:
+    if alpha_beta_split_string:
+        alpha, beta = chain.split(alpha_beta_split_string, 1)
+        return alpha, alpha_beta_split_string + beta
+    else:
+        return chain, None
 
 
-def get_modified_chains_from_fasta_file(source: str | TextIO, base_chain: str, partial_chain_start: str,
-                                        alpha_beta_split_string: str, contig_dict: ContigDict) -> List[Dict[str, Any]]:
+def get_modified_chains_from_fasta_file(source: str | TextIO, base_chain: str, partial_chain_start: Optional[str],
+                                        alpha_beta_split_string: Optional[str], contig_dict: ContigDict) -> List[
+    Dict[str, Any]]:
     chains = read_fasta_chains(source)
     for chain_dict in chains:
         res = calculate_modified_chain(base_chain, chain_dict["merged_partial_chain"], partial_chain_start, contig_dict)
@@ -192,9 +198,9 @@ def get_modified_chains_from_fasta_file(source: str | TextIO, base_chain: str, p
         chain_dict["modified_beta"] = beta
     return chains
 
-
-def get_modified_chains_from_dir(dir_name: str, pattern: str, base_chain: str, partial_chain_start: str,
-                                 alpha_beta_split_string: str, contig_dict: ContigDict) -> List[Dict[str, Any]]:
+def get_modified_chains_from_dir(dir_name: str, pattern: str, base_chain: str, partial_chain_start: Optional[str],
+                                 alpha_beta_split_string: Optional[str], contig_dict: ContigDict) -> List[
+    Dict[str, Any]]:
     folder = Path(dir_name)
     fa_files = list(folder.glob(f"{pattern}"))
     res = []
@@ -238,7 +244,6 @@ def save_chain(chain: Dict[str, Any], output_dir: str, template_path: str, cif_f
     rendered_input = render_boltz_input(chain, template_path, cif_file, molecule_smiles, output_dir, conf,
                                         msa_file)
 
-
     for model in range(conf.boltz.models_per_sequence):
         fname = f"{chain_name}_model_{model}.yaml"
         dir_path = Path(output_dir) / conf.boltz.yaml_files_dir
@@ -255,9 +260,12 @@ def save_fasta(conf, chains: List[Dict[str, Any]], output_dir: str):
         output_path = dir_path / "fasta.fa"
         output_path.write_text("")
     for chain in chains:
+        if chain['modified_beta']:
+            chain_str = f"{chain['modified_alpha']}:{chain['modified_beta']}"
+        else:
+            chain_str = f"{chain['modified_alpha']}"
         fasta_input = (
-            f">{chain['name']}_{chain['T']}_{chain['id']}\n"
-            f"{chain['modified_alpha']}:{chain['modified_beta']}"
+                f">{chain['name']}_{chain['T']}_{chain['id']}\n" + chain_str
         )
         if not conf.boltz.colabfold.merge_fasta:
             fname_fasta = f"{chain['name']}_{chain['T']}_{chain['id']}.fa"
@@ -270,7 +278,8 @@ def save_fasta(conf, chains: List[Dict[str, Any]], output_dir: str):
 
 def save_chains(chains: List[Dict[str, Any]], output_dir: str, template_path: str, cif_file: str,
                 molecule_smiles: str, conf) -> None:
-    logging.info(f"Writing {len(chains)} modified chains/{conf.boltz.models_per_sequence} model(s) each to folder {output_dir}")
+    logging.info(
+        f"Writing {len(chains)} modified chains/{conf.boltz.models_per_sequence} model(s) each to folder {output_dir}")
 
     for chain in chains:
         save_chain(chain, output_dir, template_path, cif_file, molecule_smiles, conf)

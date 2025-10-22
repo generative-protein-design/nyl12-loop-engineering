@@ -85,6 +85,9 @@ def compute_metrics(mol, atoms):
 
 @hydra.main(version_base=None, config_path='config', config_name='config')
 def main(conf: HydraConfig) -> None:
+    if not conf.postprocessing.enable:
+        return
+
     conf.base_dir = os.path.abspath(conf.base_dir)
 
     base_path = Path(conf.boltz.output_dir)

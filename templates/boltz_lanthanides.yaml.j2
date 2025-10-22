@@ -1,0 +1,26 @@
+version: 1
+sequences:
+  - protein:
+      id: [A]
+      sequence: {{ alpha_seq }}
+{%- if msa_file %}
+      msa: {{ msa_file }}_alpha.csv
+{%- endif %}
+  - ligand:
+      id: [I]
+      smiles: '{{ smiles }}'
+
+templates:
+  - cif: {{ cif_file }}
+
+{%- if constraints %}
+
+constraints:
+  {{ constraints | to_yaml | indent(2)}}
+{%- endif %}
+
+{%- if properties %}
+
+properties:
+  {{ properties | to_yaml | indent(2)}}
+{%- endif %}
