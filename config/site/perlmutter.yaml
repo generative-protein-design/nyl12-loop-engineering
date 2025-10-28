@@ -1,0 +1,15 @@
+# @package _global_
+diffusion:
+  inference:
+    ckpt_path: /global/cfs/cdirs/m906/protein-design/RFDiffusionAA_paper_weights.pt
+
+ligand_mpnn:
+  model_params_file: /global/cfs/cdirs/m906/protein-design/model_params/ligandmpnn_v_32_010_25.pt
+
+boltz:
+  colabfold:
+    database: /global/cfs/cdirs/m906/protein-design/database
+  cif_file: /global/cfs/cdirs/m906/protein-design/nyl12-loop-engineering/cif/Nyl12_refine13_no_tail.cif
+  boltz_params:
+    cache: /global/cfs/cdirs/m906/protein-design/boltz_cache
+  command: podman-hpc run -it --gpu --rm --shm-size=64G -e CUDA_VISIBLE_DEVICES -v /global/cfs/cdirs/m906/protein-design:/global/cfs/cdirs/m906/protein-design boltz2:0.1.0 pixi run boltz predict

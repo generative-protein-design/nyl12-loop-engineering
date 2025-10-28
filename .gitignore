@@ -214,3 +214,5 @@ __marimo__/
 **/out/
 **/output*
 **/commands_diffusion.sh
+
+slurm*
