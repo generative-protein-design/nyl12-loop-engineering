@@ -2,7 +2,9 @@
 
 set -e
 
-export NTASKS=2
+export NTASKS=16
+
+export BASE_DIR=`pwd`
 
 export CONFIG_NAME=${1:-config}
 
@@ -37,9 +39,7 @@ parallel --halt soon,fail=1 -j $NTASKS --ungroup bash -c "{}" :::: ${OUTPUT_FOLD
 CMD
 
 #boltz2
-
 pixi run -e boltz python prepare_boltz_input_nyl12.py +site=aster --config-name=$CONFIG_NAME
-
 
 run_task colabfold_search <<'CMD'
 bash ${OUTPUT_FOLDER}/2_boltz/commands_colabfold_search.sh
@@ -53,6 +53,22 @@ run_task boltz <<'CMD'
 parallel --halt soon,fail=1 -j $NTASKS --ungroup CUDA_VISIBLE_DEVICES='$(({%} - 1))' bash -c "{}" :::: ${OUTPUT_FOLDER}/2_boltz/commands_boltz2.sh
 CMD
 
-run_task postprocess <<'CMD'
-pixi run -e pymol python analyze_boltz_models.py +site=aster --config-name=$CONFIG_NAME
+
+export RELAXATION_OUTPUT_FOLDER=$(pixi run -e analysis python -c "from omegaconf import OmegaConf; from pathlib import Path; cfg = OmegaConf.load('config/${CONFIG_NAME}.yaml'); print(Path(cfg.relaxation.output_dir).name)")
+export BOLTZ_OUTPUT_FOLDER=$(pixi run -e analysis python -c "from omegaconf import OmegaConf; from pathlib import Path; cfg = OmegaConf.load('config/${CONFIG_NAME}.yaml'); print(Path(cfg.boltz.output_dir).name)")
+export INPUT_MODEL=$(find $BASE_DIR/$OUTPUT_FOLDER/$BOLTZ_OUTPUT_FOLDER -type f -path "*/boltz*/predictions/*/*.pdb" | head -n 1)
+
+#export INPUT_MODEL=/data/35y/nyl12-loop-engineering/output_xama/2_boltz/nyl12_xa.ma_jmp/boltz_results_nyl12_xa.ma_jmp_4_0.1_5_model_1/predictions/nyl12_xa.ma_jmp_4_0.1_5_model_1/nyl12_xa.ma_jmp_4_0.1_5_model_1_model_0.pdb
+
+run_task amber_params <<'CMD'
+pixi run -e analysis bash src/compute_amber_params.sh --input_model=$INPUT_MODEL --output_folder=$BASE_DIR/$OUTPUT_FOLDER/$RELAXATION_OUTPUT_FOLDER
+CMD
+
+run_task relaxation <<'CMD'
+bash src/prepare_relaxation_commands.sh --command=$BASE_DIR/src/run_relaxation.sh --input_folder=$BASE_DIR/$OUTPUT_FOLDER/$BOLTZ_OUTPUT_FOLDER --output_folder=$BASE_DIR/$OUTPUT_FOLDER/$RELAXATION_OUTPUT_FOLDER
+parallel -j $NTASKS --ungroup bash -c "{}" :::: ${OUTPUT_FOLDER}/${RELAXATION_OUTPUT_FOLDER}/commands_relaxation.sh
+CMD
+
+run_task filtering <<'CMD'
+pixi run -e analysis python analyze_boltz_models.py +site=aster --config-name=$CONFIG_NAME
 CMD

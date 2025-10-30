@@ -46,8 +46,8 @@ def dihedral(mol, atom1, atom2, atom3, atom4):
 
 
 def find_prediction_files(base_path: Path):
-    triples = []
-    for pdb_file in base_path.rglob("boltz*/predictions/nyl*/*.pdb"):
+    result = []
+    for pdb_file in base_path.rglob("boltz*/predictions/*/*.pdb"):
         parent = pdb_file.parent
         confidence_files = list(parent.glob("confidence*.json"))
         affinity_files = list(parent.glob("affinity*.json"))
@@ -56,20 +56,29 @@ def find_prediction_files(base_path: Path):
         affinity = affinity_files[0] if affinity_files else None
 
         if confidence is not None:
-            triples.append((confidence, affinity, pdb_file))
+            result.append({"confidence": confidence, "affinity": affinity, "model": pdb_file})
 
-    return natsorted(triples, key=lambda x: str(x[2]))
+    return result
 
 
-def copy_filtered_pdbs(base_path: Path, output_dir: Path):
-    output_dir.mkdir(parents=True, exist_ok=True)
+def copy_pdb_files(files, output_dir: Path):
+    original_dir = output_dir / "original_pdb"
+    relaxed_dir = output_dir / "relaxed_pdb"
+    original_dir.mkdir(parents=True, exist_ok=True)
+    relaxed_dir.mkdir(parents=True, exist_ok=True)
 
-    for pdb_file in base_path.rglob("predictions/nyl*/*.pdb"):
-        new_name = f"{pdb_file.name.replace('_model_0.pdb','.pdb')}"
+    for file in files:
+        original_file = file['model']
+        relaxed_file = file['relaxed_model']
+        new_name = f"{original_file.name.replace('_model_0.pdb', '.pdb')}"
 
-        dest = output_dir / new_name
-        shutil.copy2(pdb_file, dest)
-        print(f"Copied {pdb_file} → {dest}")
+        dest = original_dir / new_name
+        shutil.copy2(original_file, dest)
+        print(f"Copied {original_file} → {dest}")
+        if relaxed_file:
+            dest = relaxed_dir / new_name
+            shutil.copy2(relaxed_file, dest)
+            print(f"Copied {relaxed_file} → {dest}")
 
 
 def compute_metrics(mol, atoms):
@@ -83,32 +92,53 @@ def compute_metrics(mol, atoms):
     return d1, d2, d3, a1, t1, t2
 
 
+def add_relaxed_files(conf, files):
+    relaxation_dir = Path(conf.relaxation.output_dir)
+    for file in files:
+        relaxed_model = relaxation_dir / file["model"].stem / "complex_min.pdb"
+        file["relaxed_model"] = relaxed_model if relaxed_model.exists() else None
+        energy_file = relaxation_dir / file["model"].stem / "energy.json"
+        file["energy"] = energy_file if energy_file.exists() else None
+    pass
+
+
 @hydra.main(version_base=None, config_path='config', config_name='config')
 def main(conf: HydraConfig) -> None:
-    if not conf.postprocessing.enable:
+    if not conf.filtering.enable:
         return
 
     conf.base_dir = os.path.abspath(conf.base_dir)
 
     base_path = Path(conf.boltz.output_dir)
 
-    Path(conf.postprocessing.output_dir).mkdir(parents=True, exist_ok=True)
-
+    Path(conf.filtering.output_dir).mkdir(parents=True, exist_ok=True)
 
     # Load atoms of interest from CSV
-    atoms = load_atoms_from_csv(conf.postprocessing.atom_selections_file)
+    atoms = load_atoms_from_csv(conf.filtering.atom_selections_file)
 
     # Step 1: Find input files
     files = find_prediction_files(base_path)
+    add_relaxed_files(conf, files)
 
     rows = []
-    for confidence_json, affinity_json, mol in files:
-        model_number = mol.parent.parent.parent.name.split("_")[-1]
+    for file in files:
+        confidence_json = file["confidence"]
+        affinity_json = file["affinity"]
+        energy_json = file["energy"]
+
+        mol = file["model"]
+
         cmd.delete("all")
         cmd.load(str(mol), "mol1")
 
         # Compute geometry
         d1, d2, d3, a1, t1, t2 = compute_metrics(mol, atoms)
+
+        if energy_json:
+            with open(energy_json, "r") as f:
+                energy_data = json.load(f)
+        else:
+            energy_data = {}
 
         # Read confidence.json
         with open(confidence_json, "r") as f:
@@ -122,12 +152,13 @@ def main(conf: HydraConfig) -> None:
             affinity_pred_value = aff_data.get("affinity_pred_value")
             affinity_probability_binary = aff_data.get("affinity_probability_binary")
 
-        new_filename = f"{mol.name.replace('_model_0.pdb','.pdb')}"
+        model_name = f"{mol.stem.replace('_model_0', '', 1)}"
+
+        interface_delta = energy_data.get("interface_delta", None)
 
         rows.append(
             {
-                "model_num": model_number,
-                "model": str(base_path / "pdb" / new_filename),
+                "model": model_name,
                 "d1": round(d1, 2),
                 "d2": round(d2, 2),
                 "d3": round(d3, 2),
@@ -144,6 +175,11 @@ def main(conf: HydraConfig) -> None:
                     if affinity_probability_binary is not None
                     else None
                 ),
+                "interface_delta":
+                    float(interface_delta)
+                    if interface_delta is not None
+                    else None
+                ,
             }
         )
 
@@ -159,17 +195,18 @@ def main(conf: HydraConfig) -> None:
     )
 
     df = df.sort_values(by="lig_iptm", ascending=False)
-    df.to_csv( Path(conf.postprocessing.output_dir)/"full_metrics.csv", index=False)
+    df.to_csv(Path(conf.filtering.output_dir) / "full_metrics.csv", index=False)
 
     filtered = df[
-        (df["d1"] < conf.postprocessing.d1_max)
-        & (df["d2"] < conf.postprocessing.d2_max)
-        & (df["d3"] < conf.postprocessing.d3_max)
-        & (df["a1"].between(conf.postprocessing.a1_min, conf.postprocessing.a1_max))
-        & (df["t1"].abs().between(conf.postprocessing.t1_min, conf.postprocessing.t1_max))
-    ]
+        (df["d1"] < conf.filtering.d1_max)
+        & (df["d2"] < conf.filtering.d2_max)
+        & (df["d3"] < conf.filtering.d3_max)
+        & (df["interface_delta"] < conf.filtering.interface_delta_max)
+        & (df["a1"].between(conf.filtering.a1_min, conf.filtering.a1_max))
+        & (df["t1"].abs().between(conf.filtering.t1_min, conf.filtering.t1_max))
+        ]
 
-    copy_filtered_pdbs(base_path, Path(conf.postprocessing.output_dir)/"pdb")
+    copy_pdb_files(files, Path(conf.filtering.output_dir))
 
     print(tabulate(df, headers="keys", tablefmt="psql", showindex=False))
     print("\nModels that pass all filters:")
@@ -177,11 +214,10 @@ def main(conf: HydraConfig) -> None:
         print("None found.")
     else:
         print(tabulate(filtered, headers="keys", tablefmt="psql", showindex=False))
-        output_file = Path(conf.postprocessing.output_dir)/"filtered_metrics.csv"
+        output_file = Path(conf.filtering.output_dir) / "filtered_metrics.csv"
         filtered.to_csv(output_file, index=False)
         print(f"\nFiltered results saved to {output_file}")
 
 
 if __name__ == "__main__":
     main()
-

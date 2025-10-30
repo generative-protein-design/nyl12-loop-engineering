@@ -103,7 +103,10 @@ boltz:
       - affinity:
            binder: I
 
-postprocessing:
+relaxation:
+    output_dir: ${work_dir}/3_relaxation
+
+filtering:
   enable: true
   output_dir: ${work_dir}/final
   atom_selections_file: ${base_dir}/config/atom_selections.csv
@@ -114,3 +117,11 @@ postprocessing:
   a1_max: 120.0
   t1_min: 70.0
   t1_max: 110.0
+  interface_delta_max: 0
+  min_loop_confidences:
+    - 70
+    - 70
+    - 70
+
+
+

@@ -9,12 +9,13 @@ channels = [
     "pytorch",
     "conda-forge",
     "nvidia",
-    "https://conda.rosettacommons.org",
+    "https://conda.graylab.jhu.edu",
     "protein-design",
     "dglteam/label/cu118",
     "pyg",
     "bioconda",
-    "schrodinger"
+    "schrodinger",
+    "dacase",
 ]
 channel-priority = "disabled"
 
@@ -23,9 +24,7 @@ rf = ["rf"]
 ligand = ["ligand"]
 colabfold = ["colabfold"]
 boltz = ["boltz"]
-pymol = ["pymol"]
-
-[dependencies]
+analysis = ["analysis"]
 
 [feature.boltz.dependencies]
     python = "3.10.*"
@@ -33,13 +32,18 @@ pymol = ["pymol"]
     jinja2 = "*"
 
 
-[feature.pymol.dependencies]
-    python = "3.10.*"
+[feature.analysis.dependencies]
+    python = "3.12.*"
     pymol-bundle = "*"
     pandas = "*"
     natsort = "*"
     tabulate = "*"
     hydra-core = "*"
+    ambertools-dac = "25.*"
+    openmm = "*"
+    cudatoolkit = "11.8.*"
+    rosetta = "*"
+    pyrosetta = "*"
 
 [feature.colabfold.dependencies]
     python = "3.10.*"

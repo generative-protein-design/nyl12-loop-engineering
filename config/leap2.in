@@ -1,0 +1,13 @@
+source leaprc.protein.ff19SB
+source leaprc.gaff
+
+loadamberparams lig.frcmod
+loadoff lig.lib
+
+prot = loadpdb protein.pdb
+lig = loadpdb lig_h.pdb
+complex = combine {prot lig}
+
+saveamberparm complex complex.prmtop complex.inpcrd
+savepdb complex complex.pdb
+quit
