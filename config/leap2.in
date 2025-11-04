@@ -8,6 +8,15 @@ prot = loadpdb protein.pdb
 lig = loadpdb lig_h.pdb
 complex = combine {prot lig}
 
+remove complex complex.929.H3
+set complex.929.N charge -0.4844
+set complex.929.H1 charge 0.1224
+set complex.929.H2 charge 0.1224
+
+check complex
+charge complex
+
+
 saveamberparm complex complex.prmtop complex.inpcrd
 savepdb complex complex.pdb
 quit
