@@ -42,7 +42,6 @@ analysis = ["analysis"]
     ambertools-dac = "25.*"
     openmm = "*"
     cudatoolkit = "11.8.*"
-    rosetta = "*"
     pyrosetta = "*"
 
 [feature.colabfold.dependencies]
