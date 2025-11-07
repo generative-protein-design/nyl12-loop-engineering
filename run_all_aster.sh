@@ -2,7 +2,8 @@
 
 set -e
 
-export NTASKS=16
+export NTASKS_CPU=16
+export NTASKS_GPU=2
 
 export BASE_DIR=`pwd`
 
@@ -29,13 +30,13 @@ run_task() {
 #rf-diffusion
 run_task rf_diffusion <<'CMD'
 pixi run -e rf python 0_run_diffusion_nyl12.py +site=aster --config-name=$CONFIG_NAME
-parallel --halt soon,fail=1 -j $NTASKS --ungroup bash -c "{}" :::: ${OUTPUT_FOLDER}/0_diffusion/commands_diffusion.sh
+parallel --halt soon,fail=1 -j $NTASKS_GPU --ungroup bash -c "{}" :::: ${OUTPUT_FOLDER}/0_diffusion/commands_diffusion.sh
 CMD
 
 #ligand-mpnn
 run_task ligand_mpnn <<'CMD'
 pixi run -e ligand python 1_ligandmpnn_nyl12.py +site=aster --config-name=$CONFIG_NAME
-parallel --halt soon,fail=1 -j $NTASKS --ungroup bash -c "{}" :::: ${OUTPUT_FOLDER}/1_ligandmpnn/commands_mpnn.sh
+parallel --halt soon,fail=1 -j $NTASKS_GPU --ungroup bash -c "{}" :::: ${OUTPUT_FOLDER}/1_ligandmpnn/commands_mpnn.sh
 CMD
 
 #boltz2
@@ -46,11 +47,11 @@ bash ${OUTPUT_FOLDER}/2_boltz/commands_colabfold_search.sh
 CMD
 
 run_task msas_convert <<'CMD'
-parallel --halt soon,fail=1 -j $NTASKS --ungroup bash -c "{}" :::: ${OUTPUT_FOLDER}/2_boltz/commands_msas_convert.sh
+parallel --halt soon,fail=1 -j $NTASKS_CPU --ungroup bash -c "{}" :::: ${OUTPUT_FOLDER}/2_boltz/commands_msas_convert.sh
 CMD
 
 run_task boltz <<'CMD'
-parallel --halt soon,fail=1 -j $NTASKS --ungroup CUDA_VISIBLE_DEVICES='$(({%} - 1))' bash -c "{}" :::: ${OUTPUT_FOLDER}/2_boltz/commands_boltz2.sh
+parallel --halt soon,fail=1 -j $NTASKS_GPU --ungroup CUDA_VISIBLE_DEVICES='$(({%} - 1))' bash -c "{}" :::: ${OUTPUT_FOLDER}/2_boltz/commands_boltz2.sh
 CMD
 
 
@@ -66,7 +67,7 @@ CMD
 
 run_task relaxation <<'CMD'
 bash src/prepare_relaxation_commands.sh --command=$BASE_DIR/src/run_relaxation.sh --input_folder=$BASE_DIR/$OUTPUT_FOLDER/$BOLTZ_OUTPUT_FOLDER --output_folder=$BASE_DIR/$OUTPUT_FOLDER/$RELAXATION_OUTPUT_FOLDER
-parallel -j $NTASKS --ungroup bash -c "{}" :::: ${OUTPUT_FOLDER}/${RELAXATION_OUTPUT_FOLDER}/commands_relaxation.sh
+parallel -j $NTASKS --ungroup bash -c "{}" :::: ${OUTPUT_FOLDER}/${RELAXATION_OUTPUT_FOLDER}/commands_relaxation.sh || true
 CMD
 
 run_task filtering <<'CMD'

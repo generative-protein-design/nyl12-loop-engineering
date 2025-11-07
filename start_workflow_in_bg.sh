@@ -6,6 +6,8 @@ echo starting protein engineering
 echo output folder: $OUTPUT_FOLDER
 echo logs:  $LOGFILE
 
+
+mkdir -p $OUTPUT_FOLDER
 setsid ./run_all_aster.sh $CONFIG_NAME &> "$LOGFILE" &
 
 

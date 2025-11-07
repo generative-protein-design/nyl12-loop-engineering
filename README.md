@@ -37,6 +37,9 @@ then install colabfold database (if not already present)
 bash setup_colabfold_databases.sh <path where to install database>
 ```
 
+
+https://storage.googleapis.com/alphafold/alphafold_params_2022-12-06.tar
+
 ### On Perlmutter
 
 All steps above, plus build Podman image

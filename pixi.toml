@@ -55,8 +55,8 @@ extra-index-urls = ["https://example.com/simple"]
 find-links = [{url= 'https://storage.googleapis.com/jax-releases/jax_cuda_releases.html'}]
 
 [feature.colabfold.pypi-dependencies]
-    colabfold = { git = "git+https://github.com/sokrypton/ColabFold", extras=["alpafold"] }
-    jax = {version=">=0.3.8,<0.4",extras=["cuda"]}
+    colabfold = { git = "git+https://github.com/sokrypton/ColabFold", extras=["alphafold"] }
+    jax = {version="*",extras=["cuda"]}
 
 [feature.boltz.pypi-dependencies]
     boltz = {version="*",extras=["cuda"]}
