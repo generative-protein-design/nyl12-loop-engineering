@@ -47,6 +47,8 @@ analysis = ["analysis"]
 [feature.colabfold.dependencies]
     python = "3.10.*"
     mmseqs2 = "*"
+    hhsuite = "*"
+    pdbfixer = "*"
 
 [feature.colabfold.pypi-options]
 index-url = "https://pypi.org/simple"

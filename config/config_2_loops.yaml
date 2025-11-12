@@ -50,6 +50,16 @@ ligand_mpnn:
   mpnn_omit_AAs: "C"
   model_params_file: /data/jpc/code/LigandMPNN/model_params/ligandmpnn_v_32_010_25.pt
 
+colabfold:
+    enable: true
+    output_dir: ${work_dir}/2b_colabfold
+    input_files_dir: ${colabfold.output_dir}/input
+    command: pixi run -e colabfold colabfold_batch
+    use_templates: true
+    custom_template_path:  ${base_dir}/cif/2_loops
+    af2_weights_folder: /data/35y/alphafold_params
+    msa_mode: single_sequence
+    extra_params: "--calc-extra-ptm"
 
 boltz:
     input_dir_pattern: ${ligand_mpnn.output_dir}/*/seqs
@@ -69,7 +79,7 @@ boltz:
     base_chain: "MAASSTDNILHFDFPEVQIGTAINPEGPTGITLFYFPKGVQASVDIQGGSVGTFFTQEKMQQGEAYLDGVAFTGGGILGLEAVAGAVSSLFADQTKNEVQFRRMPLISGAVIFDYTPRQNMIYPDKALGQKAFAALSAGQFVQGRHGAGVSASVGKLLRDGFQLAGQGGAFAQIGKTKIAVFTVVNAVGVILDEKGEVIYGLPKGATKQTLNQQVTELLQQPKKPFWPEPKNTTLTIVITNEKLAPRHLKQLGRQVHHALSQVIHPYATILDGDVLYTVSTRSIESDLYAPGADIESDLNAKFIYLGMVAGELAKQAVWSAVGYSHRP"
     partial_chain_start: "MAASS"
     betachain_start: "TTLTIVIT"
-    cif_file: "/data/jpc/code/heme_binder_diffusion/cif/Nyl12_refine13_no_tail.cif"
+    cif_file: ${base_dir}cif/Nyl12_refine13_no_tail.cif
     boltz_input_template: "templates/boltz.yaml.j2"
     molecule_smiles: "CC(NCC(C=C1)=CC=C1CNC(CCCCC(NCCCCCCNC(CCCCC(NC)=O)=O)=O)=O)=O"
     batch_processing: false
@@ -108,8 +118,11 @@ relaxation:
 
 filtering:
   enable: true
+  filter_relaxed_results: true
+  remove_non_relaxable_models: true
   output_dir: ${work_dir}/final
   atom_selections_file: ${base_dir}/config/atom_selections.csv
+  atom_selections_file_relaxed: ${base_dir}/config/atom_selections_relaxed.csv
   d1_max: 3.2
   d2_max: 3.8
   d3_max: 3.8

@@ -40,7 +40,7 @@ parallel --halt soon,fail=1 -j $NTASKS_GPU --ungroup bash -c "{}" :::: ${OUTPUT_
 CMD
 
 #boltz2
-pixi run -e boltz python prepare_boltz_input_nyl12.py +site=aster --config-name=$CONFIG_NAME
+pixi run -e boltz python prepare_boltz_input_nyl12.py +site=aster colabfold.custom_template_path=\$CIF_FOLDER --config-name=$CONFIG_NAME
 
 run_task colabfold_search <<'CMD'
 bash ${OUTPUT_FOLDER}/2_boltz/commands_colabfold_search.sh
@@ -52,6 +52,14 @@ CMD
 
 run_task boltz <<'CMD'
 parallel --halt soon,fail=1 -j $NTASKS_GPU --ungroup CUDA_VISIBLE_DEVICES='$(({%} - 1))' bash -c "{}" :::: ${OUTPUT_FOLDER}/2_boltz/commands_boltz2.sh
+CMD
+
+export COLABFOLD_TEMPLATE_FOLDER=$(pixi run -e analysis python -c "from omegaconf import OmegaConf; from pathlib import Path; cfg = OmegaConf.load('config/${CONFIG_NAME}.yaml'); print(cfg.colabfold.custom_template_path)")
+
+#colabfold_local
+run_task colabfold_local <<'CMD'
+parallel -j "$NTASKS_GPU" 'mkdir -p /tmp/cif_{%} && cp "$COLABFOLD_TEMPLATE_FOLDER"/*  /tmp/cif_{%}/' ::: $(seq "$NTASKS_GPU")
+parallel --halt soon,fail=1 -j $NTASKS_GPU --ungroup CIF_FOLDER=/tmp/cif_{%} CUDA_VISIBLE_DEVICES='$(({%} - 1))' bash -c "{}" :::: ${OUTPUT_FOLDER}/2b_colabfold/commands_colabfold.sh
 CMD
 
 
@@ -71,5 +79,9 @@ parallel -j $NTASKS --ungroup bash -c "{}" :::: ${OUTPUT_FOLDER}/${RELAXATION_OU
 CMD
 
 run_task filtering <<'CMD'
+pixi run -e analysis python analyze_colabfold_models.py +site=aster --config-name=$CONFIG_NAME
 pixi run -e analysis python analyze_boltz_models.py +site=aster --config-name=$CONFIG_NAME
 CMD
+
+
+chmod og+rwX -R .

@@ -56,7 +56,10 @@ def find_prediction_files(base_path: Path):
         affinity = affinity_files[0] if affinity_files else None
 
         if confidence is not None:
-            result.append({"confidence": confidence, "affinity": affinity, "model": pdb_file})
+            model_name = f"{pdb_file.stem.replace('_model_0', '', 1)}"
+            sequence_name = model_name.rsplit('_model_', 1)[0]
+            result.append({"confidence": confidence, "affinity": affinity, "model": pdb_file, "model_name": model_name,
+                           "sequence_name": sequence_name})
 
     return result
 
@@ -70,7 +73,7 @@ def copy_pdb_files(files, output_dir: Path):
     for file in files:
         original_file = file['model']
         relaxed_file = file['relaxed_model']
-        new_name = f"{original_file.name.replace('_model_0.pdb', '.pdb')}"
+        new_name = f"{file['model_name']}.pdb"
 
         dest = original_dir / new_name
         shutil.copy2(original_file, dest)
@@ -115,7 +118,8 @@ def main(conf: HydraConfig) -> None:
     Path(conf.filtering.output_dir).mkdir(parents=True, exist_ok=True)
 
     # Load atoms of interest from CSV
-    atoms = load_atoms_from_csv(conf.filtering.atom_selections_file)
+    atoms_unrelaxed = load_atoms_from_csv(conf.filtering.atom_selections_file)
+    atoms_relaxed = load_atoms_from_csv(conf.filtering.atom_selections_file_relaxed)
 
     # Step 1: Find input files
     files = find_prediction_files(base_path)
@@ -127,7 +131,23 @@ def main(conf: HydraConfig) -> None:
         affinity_json = file["affinity"]
         energy_json = file["energy"]
 
-        mol = file["model"]
+        model_name = file["model_name"]
+
+        if conf.filtering.remove_non_relaxable_models and not file["relaxed_model"]:
+            print(f"relaxed model for {model_name} missing. Skipping")
+            continue
+
+        atoms = atoms_unrelaxed
+        if conf.filtering.filter_relaxed_results:
+            mol = file["relaxed_model"]
+            if mol:
+                mol = file["relaxed_model"]
+                atoms = atoms_relaxed
+            else:
+                mol = file["model"]
+                print(f"relaxed model for {model_name} missing. Using the unrelaxed one")
+        else:
+            mol = file["model"]
 
         cmd.delete("all")
         cmd.load(str(mol), "mol1")
@@ -153,12 +173,11 @@ def main(conf: HydraConfig) -> None:
             affinity_pred_value = aff_data.get("affinity_pred_value")
             affinity_probability_binary = aff_data.get("affinity_probability_binary")
 
-        model_name = f"{mol.stem.replace('_model_0', '', 1)}"
-
         interface_delta = energy_data.get("interface_delta", None)
 
         rows.append(
             {
+                "sequence_name": file["sequence_name"],
                 "model": model_name,
                 "d1": round(d1, 2),
                 "d2": round(d2, 2),
@@ -197,6 +216,8 @@ def main(conf: HydraConfig) -> None:
     )
 
     df = df.sort_values(by="lig_iptm", ascending=False)
+    df_colabfold = pd.read_csv(Path(conf.filtering.output_dir) / "colabfold_results.csv")
+    df = df.merge(df_colabfold, on="sequence_name", how="left")
     df.to_csv(Path(conf.filtering.output_dir) / "full_metrics.csv", index=False)
 
     filtered = df[

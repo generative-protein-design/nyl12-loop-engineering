@@ -252,22 +252,27 @@ def save_chain(chain: Dict[str, Any], output_dir: str, template_path: str, cif_f
         output_path.write_text(rendered_input)
 
 
-def save_fasta(conf, chains: List[Dict[str, Any]], output_dir: str):
-    dir_path = Path(output_dir) / conf.boltz.colabfold.fasta_output_folder
+def copy_sequence(input: str, n_copies: int) -> str:
+    inputs = [input] * n_copies
+    return ":".join(inputs)
+
+
+def save_fasta(merge_fasta: bool, chains: List[Dict[str, Any]], n_copies: int,output_dir: str):
+    dir_path = Path(output_dir)
     dir_path.mkdir(parents=True, exist_ok=True)
 
-    if conf.boltz.colabfold.merge_fasta:
+    if merge_fasta:
         output_path = dir_path / "fasta.fa"
         output_path.write_text("")
     for chain in chains:
         if chain['modified_beta']:
-            chain_str = f"{chain['modified_alpha']}:{chain['modified_beta']}"
+            chain_str = f"{copy_sequence(chain['modified_alpha'],n_copies)}:{copy_sequence(chain['modified_beta'],n_copies)}"
         else:
-            chain_str = f"{chain['modified_alpha']}"
+            chain_str = f"{copy_sequence(chain['modified_alpha'],n_copies)}"
         fasta_input = (
                 f">{chain['name']}_{chain['T']}_{chain['id']}\n" + chain_str
         )
-        if not conf.boltz.colabfold.merge_fasta:
+        if not merge_fasta:
             fname_fasta = f"{chain['name']}_{chain['T']}_{chain['id']}.fa"
             output_path = dir_path / fname_fasta
             output_path.write_text(fasta_input)
@@ -331,6 +336,31 @@ def prepare_msas_convert(conf):
     cmds_filename_colabfold = os.path.join(conf.boltz.output_dir, "commands_msas_convert.sh")
     with open(cmds_filename_colabfold, "w") as file:
         file.write("\n".join(commands_msas_convert))
+
+
+
+def prepare_colabfold_command(conf):
+    input_files_dir = Path(conf.colabfold.input_files_dir)
+    folders = [d for d in input_files_dir.iterdir() if d.is_dir()]
+    commands_colabfold = []
+    for folder in folders:
+        colabfold_files = list(folder.glob("*.fa"))
+        for file in colabfold_files:
+            commands_colabfold.append(f"{conf.colabfold.command} "
+                                  f"{'--templates --custom-template-path' if conf.colabfold.use_templates else ''} "
+                                  f"{conf.colabfold.custom_template_path  if conf.colabfold.use_templates else ''} "
+                                  f"--data {conf.colabfold.af2_weights_folder} "
+                                  f"--msa-mode {conf.colabfold.msa_mode} "
+                                  f"{conf.colabfold.extra_params if conf.colabfold.extra_params else ''} "
+                                  f"{file} "
+                                  f"{conf.colabfold.output_dir}/colabfold_{file.stem}"
+                                  )
+    print("Example colabfold command:")
+    print(commands_colabfold[-1])
+
+    cmds_filename_colabfold = os.path.join(conf.colabfold.output_dir, "commands_colabfold.sh")
+    with open(cmds_filename_colabfold, "w") as file:
+        file.write("\n".join(commands_colabfold))
 
 
 def prepare_boltz_command(conf):
@@ -397,8 +427,14 @@ def main(conf: HydraConfig) -> None:
                     conf)
 
         if not conf.boltz.boltz_params.use_msa_server:
-            save_fasta(conf, modified_chains, os.path.join(conf.boltz.input_files_dir, input_file))
+            save_fasta(True, modified_chains, 1, os.path.join(conf.boltz.input_files_dir, input_file,conf.boltz.colabfold.fasta_output_folder))
+        if conf.colabfold.enable:
+            save_fasta(False, modified_chains, 4, os.path.join(conf.colabfold.input_files_dir, input_file))
+
     prepare_boltz_command(conf)
+    if conf.colabfold.enable:
+        prepare_colabfold_command(conf)
+
     if not conf.boltz.boltz_params.use_msa_server:
         prepare_colabfold_search_command(conf)
         prepare_msas_convert(conf)
