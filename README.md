@@ -36,17 +36,35 @@ then install colabfold database (if not already present)
 ```bash
 bash setup_colabfold_databases.sh <path where to install database>
 ```
+then install alphafold params
+
+```bash
+wget https://storage.googleapis.com/alphafold/alphafold_params_colab_2022-12-06.tar
+tar -xf alphafold_params_colab_2022-12-06.tar
+````
+
+put them into params folder and create file `download_complexes_multimer_v3_finished.txt`
+
+Alternatively, colabfold will download them on first run
+
+#### Note:
+on NERSC you might need to go to a data transfer node before downloading large files. Login to 
+Perlmutter then `ssh dtn` should do the trick
 
 
-https://storage.googleapis.com/alphafold/alphafold_params_2022-12-06.tar
 
 ### On Perlmutter
 
-All steps above, plus build Podman image
+All steps above, plus build Podman images
 
 ```bash
-podman-hpc build -t boltz2:0.1.0 -f dockerfiles/Dockerfile .
-podman-hpc migrate
+podman-hpc build -t boltz2:0.1.0 --build-arg APP=boltz -f dockerfiles/Dockerfile .
+podman-hpc migrate boltz2:0.1.0
+```
+
+```bash
+podman-hpc build -t colabfold:0.1.0 --build-arg APP=colabfold -f dockerfiles/Dockerfile .
+podman-hpc migrate colabfold:0.1.0
 ```
 
 ## Running Workflows
