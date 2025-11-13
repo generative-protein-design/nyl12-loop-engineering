@@ -116,7 +116,7 @@ def process_model(conf, model):
         data = json.load(f)
         ptm = data["ptm"]
         iptm = data["iptm"]
-        rank = 0.8 * ptm + 0.2 * iptm
+        actifptm = data["actifptm"]
         plddt_array = np.array(data["plddt"])
         plddt = plddt_array.mean()
 
@@ -125,6 +125,8 @@ def process_model(conf, model):
     res["ptm"] = ptm
     res["iptm"] = iptm
     res["plddt"] = plddt
+    res["actifptm"] = actifptm
+
     return res
 
 
