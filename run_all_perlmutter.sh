@@ -14,7 +14,7 @@ export SLURM_CPU_BIND="cores"
 set -e
 
 export CONFIG_NAME=${1:-config}
-export OUTPUT_FOLDER=$(pixi run -e rf python -c "from omegaconf import OmegaConf; from pathlib import Path; cfg = OmegaConf.load('config/${CONFIG_NAME}.yaml'); print(Path(cfg.work_dir).name)")
+export OUTPUT_FOLDER=$(pixi run --as-is -e rf python -c "from omegaconf import OmegaConf; from pathlib import Path; cfg = OmegaConf.load('config/${CONFIG_NAME}.yaml'); print(Path(cfg.work_dir).name)")
 
 echo output folder: $OUTPUT_FOLDER
 mkdir -p $OUTPUT_FOLDER
@@ -37,18 +37,18 @@ run_task() {
 
 #rf-diffusion
 run_task rf_diffusion <<'CMD'
-pixi run -e rf python 0_run_diffusion_nyl12.py +site=perlmutter --config-name=$CONFIG_NAME
+pixi run --as-is -e rf python 0_run_diffusion_nyl12.py +site=perlmutter --config-name=$CONFIG_NAME
 srun driver.sh ${OUTPUT_FOLDER}/0_diffusion/commands_diffusion.sh
 CMD
 
 #ligand-mpnn
 run_task ligand_mpnn <<'CMD'
-pixi run -e ligand python 1_ligandmpnn_nyl12.py +site=perlmutter --config-name=$CONFIG_NAME
+pixi run --as-is -e ligand python 1_ligandmpnn_nyl12.py +site=perlmutter --config-name=$CONFIG_NAME
 srun driver.sh ${OUTPUT_FOLDER}/1_ligandmpnn/commands_mpnn.sh
 CMD
 
 #boltz2
-pixi run -e boltz python prepare_boltz_input_nyl12.py +site=perlmutter --config-name=$CONFIG_NAME
+pixi run --as-is -e boltz python prepare_boltz_input_nyl12.py +site=perlmutter --config-name=$CONFIG_NAME
 
 run_task colabfold_search <<'CMD'
 bash ${OUTPUT_FOLDER}/2_boltz/commands_colabfold_search.sh
@@ -63,12 +63,12 @@ srun driver.sh ${OUTPUT_FOLDER}/2_boltz/commands_boltz2.sh
 CMD
 
 export BASE_DIR=`pwd`
-export RELAXATION_OUTPUT_FOLDER=$(pixi run -e analysis python -c "from omegaconf import OmegaConf; from pathlib import Path; cfg = OmegaConf.load('config/${CONFIG_NAME}.yaml'); print(Path(cfg.relaxation.output_dir).name)")
-export BOLTZ_OUTPUT_FOLDER=$(pixi run -e analysis python -c "from omegaconf import OmegaConf; from pathlib import Path; cfg = OmegaConf.load('config/${CONFIG_NAME}.yaml'); print(Path(cfg.boltz.output_dir).name)")
+export RELAXATION_OUTPUT_FOLDER=$(pixi run --as-is -e analysis python -c "from omegaconf import OmegaConf; from pathlib import Path; cfg = OmegaConf.load('config/${CONFIG_NAME}.yaml'); print(Path(cfg.relaxation.output_dir).name)")
+export BOLTZ_OUTPUT_FOLDER=$(pixi run --as-is -e analysis python -c "from omegaconf import OmegaConf; from pathlib import Path; cfg = OmegaConf.load('config/${CONFIG_NAME}.yaml'); print(Path(cfg.boltz.output_dir).name)")
 export INPUT_MODEL=$(find $BASE_DIR/$OUTPUT_FOLDER/$BOLTZ_OUTPUT_FOLDER -type f -path "*/boltz*/predictions/*/*.pdb" | head -n 1)
 
 run_task amber_params <<'CMD'
-pixi run -e analysis bash src/compute_amber_params.sh --input_model=$INPUT_MODEL --output_folder=$BASE_DIR/$OUTPUT_FOLDER/$RELAXATION_OUTPUT_FOLDER
+pixi run --as-is -e analysis bash src/compute_amber_params.sh --input_model=$INPUT_MODEL --output_folder=$BASE_DIR/$OUTPUT_FOLDER/$RELAXATION_OUTPUT_FOLDER
 CMD
 
 run_task relaxation <<'CMD'
@@ -77,5 +77,5 @@ srun driver.sh ${OUTPUT_FOLDER}/${RELAXATION_OUTPUT_FOLDER}/commands_relaxation.
 CMD
 
 run_task filtering <<'CMD'
-pixi run -e analysis python analyze_boltz_models.py +site=perlmutter --config-name=$CONFIG_NAME
+pixi run --as-is -e analysis python analyze_boltz_models.py +site=perlmutter --config-name=$CONFIG_NAME
 CMD
