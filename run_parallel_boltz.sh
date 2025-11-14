@@ -35,6 +35,9 @@ run_task() {
 }
 
 
+pixi run --as-is -e boltz python prepare_boltz_input_nyl12.py +site=perlmutter colabfold.custom_template_path=\$CIF_FOLDER --config-name=$CONFIG_NAME
+
+
 run_task msas_convert <<'CMD'
 srun driver.sh ${OUTPUT_FOLDER}/2_boltz/commands_msas_convert.sh
 CMD
@@ -65,9 +68,10 @@ CMD
 
 run_task relaxation <<'CMD'
 bash src/prepare_relaxation_commands.sh --command=$BASE_DIR/src/run_relaxation.sh --input_folder=$BASE_DIR/$OUTPUT_FOLDER/$BOLTZ_OUTPUT_FOLDER --output_folder=$BASE_DIR/$OUTPUT_FOLDER/$RELAXATION_OUTPUT_FOLDER
-srun driver.sh ${OUTPUT_FOLDER}/${RELAXATION_OUTPUT_FOLDER}/commands_relaxation.sh || true
+srun --kill-on-bad-exit=0 driver.sh ${OUTPUT_FOLDER}/${RELAXATION_OUTPUT_FOLDER}/commands_relaxation.sh || true
 CMD
 
 run_task filtering <<'CMD'
+pixi run --as-is -e analysis python analyze_colabfold_models.py +site=perlmutter --config-name=$CONFIG_NAME
 pixi run --as-is -e analysis python analyze_boltz_models.py +site=perlmutter --config-name=$CONFIG_NAME
 CMD
