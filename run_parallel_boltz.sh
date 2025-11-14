@@ -51,7 +51,7 @@ export COLABFOLD_TEMPLATE_FOLDER=$(pixi run --as-is -e analysis python -c "from 
 
 #colabfold_local
 run_task colabfold_local <<'CMD'
-srun prepare_cif.sh $COLABFOLD_TEMPLATE_FOLDER
+srun prepare_cif.sh $COLABFOLD_TEMPLATE_FOLDER  &&
 srun driver.sh ${OUTPUT_FOLDER}/2b_colabfold/commands_colabfold.sh
 CMD
 
@@ -67,11 +67,11 @@ pixi run --as-is -e analysis bash src/compute_amber_params.sh --input_model=$INP
 CMD
 
 run_task relaxation <<'CMD'
-bash src/prepare_relaxation_commands.sh --command=$BASE_DIR/src/run_relaxation.sh --input_folder=$BASE_DIR/$OUTPUT_FOLDER/$BOLTZ_OUTPUT_FOLDER --output_folder=$BASE_DIR/$OUTPUT_FOLDER/$RELAXATION_OUTPUT_FOLDER
+bash src/prepare_relaxation_commands.sh --command=$BASE_DIR/src/run_relaxation.sh --input_folder=$BASE_DIR/$OUTPUT_FOLDER/$BOLTZ_OUTPUT_FOLDER --output_folder=$BASE_DIR/$OUTPUT_FOLDER/$RELAXATION_OUTPUT_FOLDER &&
 srun --kill-on-bad-exit=0 driver.sh ${OUTPUT_FOLDER}/${RELAXATION_OUTPUT_FOLDER}/commands_relaxation.sh || true
 CMD
 
 run_task filtering <<'CMD'
-pixi run --as-is -e analysis python analyze_colabfold_models.py +site=perlmutter --config-name=$CONFIG_NAME
+pixi run --as-is -e analysis python analyze_colabfold_models.py +site=perlmutter --config-name=$CONFIG_NAME &&
 pixi run --as-is -e analysis python analyze_boltz_models.py +site=perlmutter --config-name=$CONFIG_NAME
 CMD

@@ -37,13 +37,13 @@ run_task() {
 
 #rf-diffusion
 run_task rf_diffusion <<'CMD'
-pixi run --as-is -e rf python 0_run_diffusion_nyl12.py +site=perlmutter --config-name=$CONFIG_NAME
+pixi run --as-is -e rf python 0_run_diffusion_nyl12.py +site=perlmutter --config-name=$CONFIG_NAME &&
 srun driver.sh ${OUTPUT_FOLDER}/0_diffusion/commands_diffusion.sh
 CMD
 
 #ligand-mpnn
 run_task ligand_mpnn <<'CMD'
-pixi run --as-is -e ligand python 1_ligandmpnn_nyl12.py +site=perlmutter --config-name=$CONFIG_NAME
+pixi run --as-is -e ligand python 1_ligandmpnn_nyl12.py +site=perlmutter --config-name=$CONFIG_NAME &&
 srun driver.sh ${OUTPUT_FOLDER}/1_ligandmpnn/commands_mpnn.sh
 CMD
 

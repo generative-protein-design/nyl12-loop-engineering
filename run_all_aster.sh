@@ -29,13 +29,13 @@ run_task() {
 
 #rf-diffusion
 run_task rf_diffusion <<'CMD'
-pixi run --as-is -e rf python 0_run_diffusion_nyl12.py +site=aster --config-name=$CONFIG_NAME
+pixi run --as-is -e rf python 0_run_diffusion_nyl12.py +site=aster --config-name=$CONFIG_NAME &&
 parallel --halt soon,fail=1 -j $NTASKS_GPU --ungroup bash -c "{}" :::: ${OUTPUT_FOLDER}/0_diffusion/commands_diffusion.sh
 CMD
 
 #ligand-mpnn
 run_task ligand_mpnn <<'CMD'
-pixi run --as-is -e ligand python 1_ligandmpnn_nyl12.py +site=aster --config-name=$CONFIG_NAME
+pixi run --as-is -e ligand python 1_ligandmpnn_nyl12.py +site=aster --config-name=$CONFIG_NAME &&
 parallel --halt soon,fail=1 -j $NTASKS_GPU --ungroup bash -c "{}" :::: ${OUTPUT_FOLDER}/1_ligandmpnn/commands_mpnn.sh
 CMD
 
@@ -58,7 +58,7 @@ export COLABFOLD_TEMPLATE_FOLDER=$(pixi run --as-is -e analysis python -c "from 
 
 #colabfold_local
 run_task colabfold_local <<'CMD'
-parallel -j "$NTASKS_GPU" 'mkdir -p /tmp/cif_{%} && cp "$COLABFOLD_TEMPLATE_FOLDER"/*  /tmp/cif_{%}/' ::: $(seq "$NTASKS_GPU")
+parallel -j "$NTASKS_GPU" 'mkdir -p /tmp/cif_{%} && cp "$COLABFOLD_TEMPLATE_FOLDER"/*  /tmp/cif_{%}/' ::: $(seq "$NTASKS_GPU") &&
 parallel --halt soon,fail=1 -j $NTASKS_GPU --ungroup CIF_FOLDER=/tmp/cif_{%} CUDA_VISIBLE_DEVICES='$(({%} - 1))' bash -c "{}" :::: ${OUTPUT_FOLDER}/2b_colabfold/commands_colabfold.sh
 CMD
 
@@ -74,12 +74,12 @@ pixi run --as-is -e analysis bash src/compute_amber_params.sh --input_model=$INP
 CMD
 
 run_task relaxation <<'CMD'
-bash src/prepare_relaxation_commands.sh --command=$BASE_DIR/src/run_relaxation.sh --input_folder=$BASE_DIR/$OUTPUT_FOLDER/$BOLTZ_OUTPUT_FOLDER --output_folder=$BASE_DIR/$OUTPUT_FOLDER/$RELAXATION_OUTPUT_FOLDER
+bash src/prepare_relaxation_commands.sh --command=$BASE_DIR/src/run_relaxation.sh --input_folder=$BASE_DIR/$OUTPUT_FOLDER/$BOLTZ_OUTPUT_FOLDER --output_folder=$BASE_DIR/$OUTPUT_FOLDER/$RELAXATION_OUTPUT_FOLDER &&
 parallel -j $NTASKS --ungroup bash -c "{}" :::: ${OUTPUT_FOLDER}/${RELAXATION_OUTPUT_FOLDER}/commands_relaxation.sh || true
 CMD
 
 run_task filtering <<'CMD'
-pixi run --as-is -e analysis python analyze_colabfold_models.py +site=aster --config-name=$CONFIG_NAME
+pixi run --as-is -e analysis python analyze_colabfold_models.py +site=aster --config-name=$CONFIG_NAME &&
 pixi run --as-is -e analysis python analyze_boltz_models.py +site=aster --config-name=$CONFIG_NAME
 CMD
 
