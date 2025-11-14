@@ -60,7 +60,7 @@ colabfold:
     custom_template_path:  ${base_dir}/cif/all_loops
     af2_weights_folder: /data/35y/alphafold_params
     msa_mode: single_sequence
-    extra_params: "--calc-extra-ptm"
+    extra_params: "--calc-extra-ptm --num-recycle 4"
 
 boltz:
     input_dir_pattern: ${ligand_mpnn.output_dir}/*/seqs
