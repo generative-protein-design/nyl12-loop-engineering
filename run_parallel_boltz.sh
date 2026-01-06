@@ -2,8 +2,8 @@
 
 #SBATCH --account m906
 #SBATCH --constraint gpu&hbm80g
-#SBATCH --qos regular
-#SBATCH --time 4:00:00
+#SBATCH --qos premium
+#SBATCH --time 23:00:00
 #SBATCH --nodes 20
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=128
@@ -12,6 +12,8 @@
 export SLURM_CPU_BIND="cores"
 
 set -e
+umask 000
+
 
 export CONFIG_NAME=${1:-config}
 export OUTPUT_FOLDER=$(pixi run --as-is -e rf python -c "from omegaconf import OmegaConf; from pathlib import Path; cfg = OmegaConf.load('config/${CONFIG_NAME}.yaml'); print(Path(cfg.work_dir).name)")

@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 base_dir: .
-work_dir: ${base_dir}/output_xama_4_loops
+work_dir: ${base_dir}/output_xama_2_loops_v2
 
 hydra:
   output_subdir: null
@@ -12,13 +12,13 @@ hydra:
     dir: ${base_dir}
 
 
-contig_map: "A1-114,7-7,A122-150,14-14,A165-221,A233-328,B1-5,B286-292,8-8,B301-308,C1-5,D1-5,D29-95,9-9,D105-110"
+contig_map: "A1-150,14-14,A165-221,A233-328,B1-5,B286-292,8-8,B301-308,C1-5,D1-5,D29-110"
 
 diffusion:
   input_dir: ${base_dir}/input_test
   output_dir: ${work_dir}/0_diffusion
   command: "pixi run run-inference"
-  num_designs: 11
+  num_designs: 50 
 
   inference:
     model_runner: NRBStyleSelfCond
@@ -56,7 +56,7 @@ colabfold:
     input_files_dir: ${colabfold.output_dir}/input
     command: pixi run -e colabfold colabfold_batch
     use_templates: true
-    custom_template_path:  ${base_dir}/cif/4_loops
+    custom_template_path:  ${base_dir}/cif/2_loops
     af2_weights_folder: /data/35y/alphafold_params
     msa_mode: single_sequence
     extra_params: "--calc-extra-ptm --num-recycle 4"
@@ -79,11 +79,11 @@ boltz:
     base_chain: "MAASSTDNILHFDFPEVQIGTAINPEGPTGITLFYFPKGVQASVDIQGGSVGTFFTQEKMQQGEAYLDGVAFTGGGILGLEAVAGAVSSLFADQTKNEVQFRRMPLISGAVIFDYTPRQNMIYPDKALGQKAFAALSAGQFVQGRHGAGVSASVGKLLRDGFQLAGQGGAFAQIGKTKIAVFTVVNAVGVILDEKGEVIYGLPKGATKQTLNQQVTELLQQPKKPFWPEPKNTTLTIVITNEKLAPRHLKQLGRQVHHALSQVIHPYATILDGDVLYTVSTRSIESDLYAPGADIESDLNAKFIYLGMVAGELAKQAVWSAVGYSHRP"
     partial_chain_start: "MAASS"
     betachain_start: "TTLTIVIT"
-    cif_file: ${base_dir}/cif/Nyl12_refine13_no_tail.cif
+    cif_file: ${base_dir}/cif/Nyl12_tetramer-symgen_no_tail.cif
     boltz_input_template: "templates/boltz.yaml.j2"
     molecule_smiles: "CC(NCC(C=C1)=CC=C1CNC(CCCCC(NCCCCCCNC(CCCCC(NC)=O)=O)=O)=O)=O"
     batch_processing: false
-    models_per_sequence: 1
+    models_per_sequence: 5
     boltz_params:
       model: boltz2
       output_format: pdb

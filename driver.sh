@@ -10,7 +10,7 @@ if [[ -z "${SLURM_NNODES}" ]]; then
 fi
 
 #export PODMANHPC_ADDITIONAL_STORES=/dvs_ro/cfs/cdirs/m906/protein-design/shared_images
-export PODMANHPC_ADDITIONAL_STORES=/pscratch/sd/y/yakser/storage 
+#export PODMANHPC_ADDITIONAL_STORES=/pscratch/sd/y/yakser/storage 
 
 cat $1 |                                               \
 awk -v NNODE="$SLURM_NNODES" -v NODEID="$SLURM_NODEID" \

@@ -138,6 +138,8 @@ def main(conf: HydraConfig) -> None:
     conf.base_dir = os.path.abspath(conf.base_dir)
 
     base_path = Path(conf.colabfold.output_dir)
+    Path(conf.filtering.output_dir).mkdir(parents=True, exist_ok=True)
+
 
     models = find_prediction_files(base_path)
 

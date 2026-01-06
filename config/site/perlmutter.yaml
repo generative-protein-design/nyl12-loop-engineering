@@ -9,13 +9,13 @@ ligand_mpnn:
 boltz:
   colabfold:
     database: /global/cfs/cdirs/m906/protein-design/database
-  cif_file: /global/cfs/cdirs/m906/protein-design/nyl12-loop-engineering/cif/Nyl12_refine13_no_tail.cif
+    cif_file: /global/cfs/cdirs/m906/protein-design/nyl12-loop-engineering/cif/Nyl12_tetramer-symgen_no_tail.cif
   boltz_params:
     cache: /global/cfs/cdirs/m906/protein-design/boltz_cache
-  command: podman-hpc run -it --gpu --rm --shm-size=64G -e CUDA_VISIBLE_DEVICES -v /global/cfs/cdirs/m906/protein-design:/global/cfs/cdirs/m906/protein-design boltz2:0.1.0 pixi run boltz predict
+  command: podman-hpc run --umask 0000 -it --gpu --rm --shm-size=64G -e CUDA_VISIBLE_DEVICES -v /global/cfs/cdirs/m906/protein-design:/global/cfs/cdirs/m906/protein-design boltz2:0.1.0 pixi run boltz predict
 
 
 
 colabfold:
   af2_weights_folder: /global/cfs/cdirs/m906/protein-design/alphafold_params
-  command: podman-hpc run -it --gpu --rm --shm-size=64G -e CUDA_VISIBLE_DEVICES -e CIF_FOLDER -v /tmp/cif:/tmp/cif -v /global/cfs/cdirs/m906/protein-design:/global/cfs/cdirs/m906/protein-design colabfold:0.1.0 pixi run -e colabfold colabfold_batch
+  command: podman-hpc run --umask 0000 -it --gpu --rm --shm-size=64G -e CUDA_VISIBLE_DEVICES -e CIF_FOLDER -v /tmp/cif:/tmp/cif -v /global/cfs/cdirs/m906/protein-design:/global/cfs/cdirs/m906/protein-design colabfold:0.1.0 pixi run -e colabfold colabfold_batch
