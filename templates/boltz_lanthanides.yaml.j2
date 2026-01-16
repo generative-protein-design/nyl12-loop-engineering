@@ -3,11 +3,9 @@ sequences:
   - protein:
       id: [A]
       sequence: {{ alpha_seq }}
-{%- if msa_file %}
-      msa: {{ msa_file }}_alpha.csv
-{%- endif %}
+      msa: empty
   - ligand:
-      id: [I]
+      id: [B, C]
       smiles: '{{ smiles }}'
 
 templates:

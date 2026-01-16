@@ -405,8 +405,8 @@ HET     CA  A 201       1
 HET     CA  A 202       1                                                       
 HET     CA  A 203       1                                                       
 HET     CA  A 204       1                                                       
-HETNAM      CA NEODYMIUM ION                                                    
-FORMUL   2   CA    4(CA 3+)                                                     
+HETNAM      TB TERBIUM ION                                                    
+FORMUL   2  TB     4(TB 3+)                                                     
 FORMUL   6  HOH   *167(H2 O)                                                    
 HELIX    1 AA1 ASP A   30  ASP A   35  5                                   6    
 HELIX    2 AA2 LEU A   44  ASP A   59  1                                  16    
@@ -2012,6 +2012,6 @@ ANISOU  792  NH2 ARG A 133     3408   4585   2662   -169   -138   -186       N
 ATOM    793  OXT ARG A 133      17.281  12.968  46.475  1.00 29.72           O  
 ANISOU  793  OXT ARG A 133     3502   4185   3607     -1    307  -1025       O  
 TER     794      ARG A 133                                                      
-HETATM  796  CA   CA A 202      27.147  24.748  39.188  0.99 23.92          CA2+
-ANISOU  796  CA   CA A 202     3712   3092   2286   -561    437     35      CA2+
+HETATM  796 TB   TB  A 202      27.147  24.748  39.188  0.99 23.92          TB3+
+HETATM  797 TB   TB  A 203      28.578  31.754  48.079  1.00 20.64          TB3+
 END

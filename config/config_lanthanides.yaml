@@ -12,17 +12,17 @@ hydra:
     dir: ${base_dir}
 
 
-contig_map: "58-58,A59-70,13-13,A84-95,40-40"
+contig_map: "58-58,A59-70,13-13,A84-95,38-38"
 
 diffusion:
   input_dir: ${base_dir}/input_lanthanides
   output_dir: ${work_dir}/0_diffusion
   command: "pixi run run-inference"
-  num_designs: 1
+  num_designs: 5 
 
   inference:
     model_runner: NRBStyleSelfCond
-    ligand: "CA"
+    ligand: "TB"
     num_designs: ${diffusion.num_designs}
     ckpt_path: /data/jpc/code/rf_diffusion_all_atom/RFDiffusionAA_paper_weights.pt
 
@@ -48,6 +48,10 @@ ligand_mpnn:
   model_params_file: /data/jpc/code/LigandMPNN/model_params/ligandmpnn_v_32_010_25.pt
 
 
+colabfold:
+    enable: false
+    custom_template_path:
+
 boltz:
     input_dir_pattern: ${ligand_mpnn.output_dir}/*/seqs
     output_dir: ${work_dir}/2_boltz
@@ -63,12 +67,12 @@ boltz:
     input_files_dir: ${boltz.output_dir}/input
     yaml_files_dir: yaml
     file_pattern: "*.fa"
-    base_chain: "VDIAAFDPDKDGTIDLKEALAAGSAAFDKLDPDKDGTLDAKELKGRVSEADLKKLDPDNDGTLDKKEYLAAVEAQFKAANPDNDGTIDARELASPAGSALVNLIRAGAAAAAAAAGAAAAAGASAASSAASSLSS"
+    base_chain: "MAFRLSSAVLLAALVAAPAYAAPTTTTKVDIAAFDPDKDGTIDLKEALAAGSAAFDKLDPDKDGTLDAKELKGRVSEADLKKLDPDNDGTLDKKEYLAAVEAQFKAANPDNDGTIDARELASPAGSALVNLIR"
     partial_chain_start: null
     betachain_start: null
     cif_file: "/data/jpc/code/nyl12-loop-engineering/input_test/8fns.cif"
     boltz_input_template: "templates/boltz_lanthanides.yaml.j2"
-    molecule_smiles: "[Nd3+]"
+    molecule_smiles: "[Tb+3]"
     batch_processing: false
     models_per_sequence: 5
     boltz_params:
@@ -79,7 +83,7 @@ boltz:
       use_potentials: true
       cache: /data/jpc/code/boltz
       output_dir: ${boltz.output_dir}
-      affinity_mw_correction: False
+      affinity_mw_correction: false
       recycling_steps: 3
       sampling_steps: 200
       diffusion_samples: 1
@@ -89,14 +93,3 @@ boltz:
     constraints: []
     properties: []
 
-postprocessing:
-  enable: false
-  output_dir: ${work_dir}/final
-  atom_selections_file: ${base_dir}/config/atom_selections.csv
-  d1_max: 3.2
-  d2_max: 3.8
-  d3_max: 3.8
-  a1_min: 80.0
-  a1_max: 120.0
-  t1_min: 70.0
-  t1_max: 110.0
