@@ -9,6 +9,5 @@ ligand_mpnn:
 boltz:
     colabfold:
       database: /data/jpc/code/database/
-    cif_file: /data/jpc/code/heme_binder_diffusion/cif/Nyl12_refine13_no_tail.cif
     boltz_params:
       cache: /data/jpc/code/boltz
