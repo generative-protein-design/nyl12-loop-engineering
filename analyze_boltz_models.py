@@ -58,21 +58,26 @@ def find_prediction_files(base_path: Path):
         if confidence is not None:
             model_name = f"{pdb_file.stem.replace('_model_0', '', 1)}"
             sequence_name = model_name.rsplit('_model_', 1)[0]
+            input_name = sequence_name.rsplit('_', 3)[0]
             result.append({"confidence": confidence, "affinity": affinity, "model": pdb_file, "model_name": model_name,
-                           "sequence_name": sequence_name})
+                           "sequence_name": sequence_name,"input_name":input_name})
 
     return result
 
 
-def copy_pdb_files(files, output_dir: Path):
+def copy_pdb_files(files, copy_relaxed: bool, output_dir: Path):
     original_dir = output_dir / "original_pdb"
-    relaxed_dir = output_dir / "relaxed_pdb"
     original_dir.mkdir(parents=True, exist_ok=True)
-    relaxed_dir.mkdir(parents=True, exist_ok=True)
+    if copy_relaxed:
+        relaxed_dir = output_dir / "relaxed_pdb"
+        relaxed_dir.mkdir(parents=True, exist_ok=True)
 
     for file in files:
         original_file = file['model']
-        relaxed_file = file['relaxed_model']
+        if copy_relaxed:
+            relaxed_file = file['relaxed_model']
+        else:
+            relaxed_file = None
         new_name = f"{file['model_name']}.pdb"
 
         dest = original_dir / new_name
@@ -106,23 +111,10 @@ def add_relaxed_files(conf, files):
     pass
 
 
-@hydra.main(version_base=None, config_path='config', config_name='config')
-def main(conf: HydraConfig) -> None:
-    if not conf.filtering.enable:
-        return
+def filter_by_affinity(files, conf: HydraConfig) -> None:
+    atoms_unrelaxed = load_atoms_from_csv(conf.filtering.affinity.atom_selections_file)
+    atoms_relaxed = load_atoms_from_csv(conf.filtering.affinity.atom_selections_file_relaxed)
 
-    conf.base_dir = os.path.abspath(conf.base_dir)
-
-    base_path = Path(conf.boltz.output_dir)
-
-    Path(conf.filtering.output_dir).mkdir(parents=True, exist_ok=True)
-
-    # Load atoms of interest from CSV
-    atoms_unrelaxed = load_atoms_from_csv(conf.filtering.atom_selections_file)
-    atoms_relaxed = load_atoms_from_csv(conf.filtering.atom_selections_file_relaxed)
-
-    # Step 1: Find input files
-    files = find_prediction_files(base_path)
     add_relaxed_files(conf, files)
 
     rows = []
@@ -133,12 +125,12 @@ def main(conf: HydraConfig) -> None:
 
         model_name = file["model_name"]
 
-        if conf.filtering.remove_non_relaxable_models and not file["relaxed_model"]:
+        if conf.filtering.affinity.remove_non_relaxable_models and not file["relaxed_model"]:
             print(f"relaxed model for {model_name} missing. Skipping")
             continue
 
         atoms = atoms_unrelaxed
-        if conf.filtering.filter_relaxed_results:
+        if conf.filtering.affinity.filter_relaxed_results:
             mol = file["relaxed_model"]
             if mol:
                 mol = file["relaxed_model"]
@@ -218,19 +210,89 @@ def main(conf: HydraConfig) -> None:
     df = df.sort_values(by="lig_iptm", ascending=False)
     df_colabfold = pd.read_csv(Path(conf.filtering.output_dir) / "colabfold_results.csv")
     df = df.merge(df_colabfold, on="sequence_name", how="left")
-    df.to_csv(Path(conf.filtering.output_dir) / "full_metrics.csv", index=False)
 
     filtered = df[
-        (df["d1"] < conf.filtering.d1_max)
-        & (df["d2"] < conf.filtering.d2_max)
-        & (df["d3"] < conf.filtering.d3_max)
-        & (df["d4"] < conf.filtering.d4_max)
-        & (df["interface_delta"] < conf.filtering.interface_delta_max)
-        & (df["a1"].between(conf.filtering.a1_min, conf.filtering.a1_max))
-        & (df["t1"].abs().between(conf.filtering.t1_min, conf.filtering.t1_max))
+        (df["d1"] < conf.filtering.affinity.d1_max)
+        & (df["d2"] < conf.filtering.affinity.d2_max)
+        & (df["d3"] < conf.filtering.affinity.d3_max)
+        & (df["d4"] < conf.filtering.affinity.d4_max)
+        & (df["interface_delta"] < conf.filtering.affinity.interface_delta_max)
+        & (df["a1"].between(conf.filtering.affinity.a1_min, conf.filtering.affinity.a1_max))
+        & (df["t1"].abs().between(conf.filtering.affinity.t1_min, conf.filtering.affinity.t1_max))
         ]
 
-    copy_pdb_files(files, Path(conf.filtering.output_dir))
+    return df, filtered
+
+
+def filter_by_backbone(files, conf: HydraConfig) -> None:
+    rows = []
+    for file in files:
+        confidence_json = file["confidence"]
+        model_name = file["model_name"]
+        # JMP: cmd.load... # load backbone model
+
+
+        seqs = file["sequence_name"].split("_")
+        seqs[-1],seqs[-2]=seqs[-2],seqs[-1]
+        backbone_filename = "_".join(seqs)+".pdb"
+        backbone_file = Path(conf.ligand_mpnn.output_dir)/file["input_name"]/"backbones"/backbone_filename
+        cmd.load(str(file["model"]), "mol1")
+        cmd.load(str(backbone_file), "bb")
+        # JMP: Compute RMSD between Boltz and corresponding RFDAA backbone model
+        res=cmd.align("mol1","bb")
+        cmd.delete("mol1")
+        cmd.delete("bb")
+        print(res)
+
+        # Read confidence.json
+        with open(confidence_json, "r") as f:
+            conf_data = json.load(f)
+
+        rows.append(
+            {
+                "sequence_name": file["sequence_name"],
+                "model": model_name,
+                "confidence": round(conf_data["confidence_score"], 3),
+                "ptm": round(conf_data["ptm"], 3),
+                "complex_plddt": round(conf_data["complex_plddt"], 3),
+                "ligand_iptm": round(conf_data["ligand_iptm"], 3),
+                "rdms": res[0],
+            }
+        )
+
+    df = pd.DataFrame(rows)
+
+    df = df.rename(
+        columns={
+            "confidence": "conf",
+            "ligand_iptm": "lig_iptm",
+        }
+    )
+
+    df = df.sort_values(by="conf", ascending=False)
+    filtered = df[
+        (df["rdms"] < conf.filtering.backbone.max_rdms)
+    ]
+    return df, filtered
+
+
+@hydra.main(version_base=None, config_path='config', config_name='config')
+def main(conf: HydraConfig) -> None:
+    conf.base_dir = os.path.abspath(conf.base_dir)
+    base_path = Path(conf.boltz.output_dir)
+    Path(conf.filtering.output_dir).mkdir(parents=True, exist_ok=True)
+    files = find_prediction_files(base_path)
+
+    if conf.filtering.affinity.enable:
+        df, filtered=filter_by_affinity(files,base_path, conf)
+    elif conf.filtering.backbone.enable:
+        df, filtered = filter_by_backbone(files, conf)
+    else:
+        return
+
+    df.to_csv(Path(conf.filtering.output_dir) / "full_metrics.csv", index=False)
+
+    copy_pdb_files(files, conf.filtering.affinity.enable, Path(conf.filtering.output_dir))
     total_models = len(df)
     passed_models = len(filtered)
 

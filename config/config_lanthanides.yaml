@@ -93,3 +93,12 @@ boltz:
     constraints: []
     properties: []
 
+filtering:
+  enable: true
+  backbone:
+    enable: true
+    max_rdms: 2.0
+  affinity:
+    enable: false
+
+  output_dir: ${work_dir}/final
