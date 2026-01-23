@@ -132,7 +132,7 @@ def process_model(conf, model):
 
 @hydra.main(version_base=None, config_path='config', config_name='config')
 def main(conf: HydraConfig) -> None:
-    if not conf.filtering.enable:
+    if not conf.filtering.affinity.enable:
         return
 
     conf.base_dir = os.path.abspath(conf.base_dir)

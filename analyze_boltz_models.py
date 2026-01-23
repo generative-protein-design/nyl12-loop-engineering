@@ -256,7 +256,7 @@ def filter_by_backbone(files, conf: HydraConfig) -> None:
                 "ptm": round(conf_data["ptm"], 3),
                 "complex_plddt": round(conf_data["complex_plddt"], 3),
                 "ligand_iptm": round(conf_data["ligand_iptm"], 3),
-                "rdms": res[0],
+                "rmsd": res[0],
             }
         )
 
@@ -271,7 +271,7 @@ def filter_by_backbone(files, conf: HydraConfig) -> None:
 
     df = df.sort_values(by="conf", ascending=False)
     filtered = df[
-        (df["rdms"] < conf.filtering.backbone.max_rdms)
+        (df["rmsd"] < conf.filtering.backbone.max_rmsd)
     ]
     return df, filtered
 

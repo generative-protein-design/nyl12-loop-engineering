@@ -94,10 +94,9 @@ boltz:
     properties: []
 
 filtering:
-  enable: true
   backbone:
     enable: true
-    max_rdms: 2.0
+    max_rmsd: 2.0
   affinity:
     enable: false
 
