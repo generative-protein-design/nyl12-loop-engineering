@@ -74,6 +74,7 @@ boltz:
       merge_fasta: true
 
     input_files_dir: ${boltz.output_dir}/input
+    input_file_name: null
     yaml_files_dir: yaml
     file_pattern: "*.fa"
     base_chain: "MAASSTDNILHFDFPEVQIGTAINPEGPTGITLFYFPKGVQASVDIQGGSVGTFFTQEKMQQGEAYLDGVAFTGGGILGLEAVAGAVSSLFADQTKNEVQFRRMPLISGAVIFDYTPRQNMIYPDKALGQKAFAALSAGQFVQGRHGAGVSASVGKLLRDGFQLAGQGGAFAQIGKTKIAVFTVVNAVGVILDEKGEVIYGLPKGATKQTLNQQVTELLQQPKKPFWPEPKNTTLTIVITNEKLAPRHLKQLGRQVHHALSQVIHPYATILDGDVLYTVSTRSIESDLYAPGADIESDLNAKFIYLGMVAGELAKQAVWSAVGYSHRP"
@@ -117,25 +118,29 @@ relaxation:
     output_dir: ${work_dir}/3_relaxation
 
 filtering:
-  enable: true
-  filter_relaxed_results: true
-  remove_non_relaxable_models: true
   output_dir: ${work_dir}/final
-  atom_selections_file: ${base_dir}/config/atom_selections.csv
-  atom_selections_file_relaxed: ${base_dir}/config/atom_selections_relaxed.csv
-  d1_max: 3.2
-  d2_max: 3.8
-  d3_max: 3.8
-  d4_max: 10.0
-  a1_min: 80.0
-  a1_max: 120.0
-  t1_min: 70.0
-  t1_max: 110.0
-  interface_delta_max: 0
-  min_loop_confidences:
-    - 70
-    - 70
-    - 70
+  number_of_top_sequences: 20
+  backbone:
+    enable: false
+  affinity:
+    enable: true
+    filter_relaxed_results: true
+    remove_non_relaxable_models: true
+    atom_selections_file: ${base_dir}/config/atom_selections.csv
+    atom_selections_file_relaxed: ${base_dir}/config/atom_selections_relaxed.csv
+    d1_max: 3.2
+    d2_max: 3.8
+    d3_max: 3.8
+    d4_max: 10.0
+    a1_min: 80.0
+    a1_max: 120.0
+    t1_min: 70.0
+    t1_max: 110.0
+    interface_delta_max: 0
+    min_loop_confidences:
+      - 70
+      - 70
+      - 70
 
 
 

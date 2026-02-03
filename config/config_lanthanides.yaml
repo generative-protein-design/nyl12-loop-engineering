@@ -65,6 +65,7 @@ boltz:
       merge_fasta: true
 
     input_files_dir: ${boltz.output_dir}/input
+    input_file_name: null
     yaml_files_dir: yaml
     file_pattern: "*.fa"
     base_chain: "MAFRLSSAVLLAALVAAPAYAAPTTTTKVDIAAFDPDKDGTIDLKEALAAGSAAFDKLDPDKDGTLDAKELKGRVSEADLKKLDPDNDGTLDKKEYLAAVEAQFKAANPDNDGTIDARELASPAGSALVNLIR"
