@@ -36,6 +36,8 @@ def parse_contig(contig: str) -> ContigDict:
     }
     """
 
+    if not contig:
+        return {}
     cur_chain = 'A'
     intervals = contig.split(",")
     reduced_index = 0
@@ -114,7 +116,6 @@ def read_fasta_chains(source) -> List[Dict[str, Any]]:
                 if "=" in part:
                     key, val = part.split("=", 1)
                     entry[key.strip()] = val.strip()
-
             entry["merged_partial_chain"] = chain
             entries.append(entry)
 
@@ -122,7 +123,16 @@ def read_fasta_chains(source) -> List[Dict[str, Any]]:
         if close_when_done:
             f.close()
 
-    return entries[1:]
+    return entries[0], entries[1:]
+
+
+def get_chain_name(chain: Dict[Any]) -> str:
+    name = chain["name"]
+    if "T" in chain:
+        name += f"_{chain['T']}"
+    if "id" in name:
+        name += f"_{chain['id']}"
+    return name
 
 
 def chain_to_list(chain: str) -> List[Tuple[int, str]]:
@@ -160,8 +170,8 @@ def update_base_chain_from_partial(base_chain_list: List[Tuple[int, str]], parti
         base_chain_list[i1:i2 + 1] = replace
 
 
-def calculate_modified_chain(base_chain: str, merged_partial_chain: str, partial_chain_start: Optional[str],
-                             contig_dict: ContigDict) -> str:
+def calculate_chain(base_chain: str, merged_partial_chain: str, partial_chain_start: Optional[str],
+                    contig_dict: ContigDict) -> str:
     """
     Calculate a single modified chain by replacing residues at indices
     based on a mapping parsed from a contig string.
@@ -170,7 +180,7 @@ def calculate_modified_chain(base_chain: str, merged_partial_chain: str, partial
         partial_chains = merged_partial_chain.split(partial_chain_start)[1:]
         partial_chains = [partial_chain_start + partial_chain for partial_chain in partial_chains]
     else:
-        partial_chains=[merged_partial_chain]
+        partial_chains = [merged_partial_chain]
     # convert string representation to list, to simplify modification
     chain_list = chain_to_list(base_chain)
     for i, partial_chain in enumerate(partial_chains):
@@ -186,20 +196,29 @@ def split_chain(chain: str, alpha_beta_split_string: Optional[str]) -> Tuple[str
         return chain, None
 
 
-def get_modified_chains_from_fasta_file(source: str | TextIO, base_chain: str, partial_chain_start: Optional[str],
-                                        alpha_beta_split_string: Optional[str], contig_dict: ContigDict) -> List[
+def get_chains_from_fasta_file(source: str | TextIO, base_chain: str, partial_chain_start: Optional[str],
+                               alpha_beta_split_string: Optional[str], contig_dict: ContigDict) -> List[
     Dict[str, Any]]:
-    chains = read_fasta_chains(source)
-    for chain_dict in chains:
-        res = calculate_modified_chain(base_chain, chain_dict["merged_partial_chain"], partial_chain_start, contig_dict)
+    first_chain, chains = read_fasta_chains(source)
+    if chains:  # partial chains
+        for chain_dict in chains:
+            res = calculate_chain(base_chain, chain_dict["merged_partial_chain"], partial_chain_start, contig_dict)
+            alpha, beta = split_chain(res, alpha_beta_split_string)
+            chain_dict["chain"] = res
+            chain_dict["alpha"] = alpha
+            chain_dict["beta"] = beta
+        return chains
+    else:
+        res = first_chain["merged_partial_chain"]
         alpha, beta = split_chain(res, alpha_beta_split_string)
-        chain_dict["modified_chain"] = res
-        chain_dict["modified_alpha"] = alpha
-        chain_dict["modified_beta"] = beta
-    return chains
+        first_chain["chain"] = res
+        first_chain["alpha"] = alpha
+        first_chain["beta"] = beta
+        return [first_chain]
 
-def get_modified_chains_from_dir(dir_name: str, pattern: str, base_chain: str, partial_chain_start: Optional[str],
-                                 alpha_beta_split_string: Optional[str], contig_dict: ContigDict) -> List[
+
+def get_chains_from_dir(dir_name: str, pattern: str, base_chain: str, partial_chain_start: Optional[str],
+                        alpha_beta_split_string: Optional[str], contig_dict: ContigDict) -> List[
     Dict[str, Any]]:
     folder = Path(dir_name)
     fa_files = list(folder.glob(f"{pattern}"))
@@ -207,9 +226,9 @@ def get_modified_chains_from_dir(dir_name: str, pattern: str, base_chain: str, p
     logging.info(f"Processing {len(fa_files)} fasta files from folder {dir_name}")
 
     for file in fa_files:
-        res += get_modified_chains_from_fasta_file(file.resolve().as_posix(), base_chain, partial_chain_start,
-                                                   alpha_beta_split_string,
-                                                   contig_dict)
+        res += get_chains_from_fasta_file(file.resolve().as_posix(), base_chain, partial_chain_start,
+                                          alpha_beta_split_string,
+                                          contig_dict)
 
     return res
 
@@ -217,8 +236,8 @@ def get_modified_chains_from_dir(dir_name: str, pattern: str, base_chain: str, p
 def render_boltz_input(chain: Dict[str, Any], template_path: str, cif_file: str, molecule_smiles: str,
                        output_dir: str, conf, msa_file) -> None:
     context = {
-        "alpha_seq": chain["modified_alpha"],
-        "beta_seq": chain["modified_beta"],
+        "alpha_seq": chain["alpha"],
+        "beta_seq": chain["beta"],
         "smiles": molecule_smiles,
         "cif_file": cif_file,
         "constraints": OmegaConf.to_container(conf.boltz.constraints, resolve=True),
@@ -238,7 +257,8 @@ def render_boltz_input(chain: Dict[str, Any], template_path: str, cif_file: str,
 
 def save_chain(chain: Dict[str, Any], output_dir: str, template_path: str, cif_file: str, molecule_smiles: str,
                conf) -> None:
-    chain_name = f"{chain['name']}_{chain['T']}_{chain['id']}"
+
+    chain_name = get_chain_name(chain)
 
     msa_file = f"{chain_name}"
     rendered_input = render_boltz_input(chain, template_path, cif_file, molecule_smiles, output_dir, conf,
@@ -257,7 +277,7 @@ def copy_sequence(input: str, n_copies: int) -> str:
     return ":".join(inputs)
 
 
-def save_fasta(merge_fasta: bool, chains: List[Dict[str, Any]], n_copies: int,output_dir: str):
+def save_fasta(merge_fasta: bool, chains: List[Dict[str, Any]], n_copies: int, output_dir: str):
     dir_path = Path(output_dir)
     dir_path.mkdir(parents=True, exist_ok=True)
 
@@ -265,15 +285,15 @@ def save_fasta(merge_fasta: bool, chains: List[Dict[str, Any]], n_copies: int,ou
         output_path = dir_path / "fasta.fa"
         output_path.write_text("")
     for chain in chains:
-        if chain['modified_beta']:
-            chain_str = f"{copy_sequence(chain['modified_alpha'],n_copies)}:{copy_sequence(chain['modified_beta'],n_copies)}"
+        if chain['beta']:
+            chain_str = f"{copy_sequence(chain['alpha'], n_copies)}:{copy_sequence(chain['beta'], n_copies)}"
         else:
-            chain_str = f"{copy_sequence(chain['modified_alpha'],n_copies)}"
+            chain_str = f"{copy_sequence(chain['alpha'], n_copies)}"
         fasta_input = (
-                f">{chain['name']}_{chain['T']}_{chain['id']}\n" + chain_str
+                f">{get_chain_name(chain)}\n" + chain_str
         )
         if not merge_fasta:
-            fname_fasta = f"{chain['name']}_{chain['T']}_{chain['id']}.fa"
+            fname_fasta = f"{get_chain_name(chain)}.fa"
             output_path = dir_path / fname_fasta
             output_path.write_text(fasta_input)
         else:
@@ -284,7 +304,7 @@ def save_fasta(merge_fasta: bool, chains: List[Dict[str, Any]], n_copies: int,ou
 def save_chains(chains: List[Dict[str, Any]], output_dir: str, template_path: str, cif_file: str,
                 molecule_smiles: str, conf) -> None:
     logging.info(
-        f"Writing {len(chains)} modified chains/{conf.boltz.models_per_sequence} model(s) each to folder {output_dir}")
+        f"Writing {len(chains)} chains/{conf.boltz.models_per_sequence} model(s) each to folder {output_dir}")
 
     for chain in chains:
         save_chain(chain, output_dir, template_path, cif_file, molecule_smiles, conf)
@@ -338,7 +358,6 @@ def prepare_msas_convert(conf):
         file.write("\n".join(commands_msas_convert))
 
 
-
 def prepare_colabfold_command(conf):
     input_files_dir = Path(conf.colabfold.input_files_dir)
     folders = [d for d in input_files_dir.iterdir() if d.is_dir()]
@@ -347,14 +366,14 @@ def prepare_colabfold_command(conf):
         colabfold_files = list(folder.glob("*.fa"))
         for file in colabfold_files:
             commands_colabfold.append(f"{conf.colabfold.command} "
-                                  f"{'--templates --custom-template-path' if conf.colabfold.use_templates else ''} "
-                                  f"{conf.colabfold.custom_template_path  if conf.colabfold.use_templates else ''} "
-                                  f"--data {conf.colabfold.af2_weights_folder} "
-                                  f"--msa-mode {conf.colabfold.msa_mode} "
-                                  f"{conf.colabfold.extra_params if conf.colabfold.extra_params else ''} "
-                                  f"{file} "
-                                  f"{conf.colabfold.output_dir}/colabfold_{file.stem}"
-                                  )
+                                      f"{'--templates --custom-template-path' if conf.colabfold.use_templates else ''} "
+                                      f"{conf.colabfold.custom_template_path if conf.colabfold.use_templates else ''} "
+                                      f"--data {conf.colabfold.af2_weights_folder} "
+                                      f"--msa-mode {conf.colabfold.msa_mode} "
+                                      f"{conf.colabfold.extra_params if conf.colabfold.extra_params else ''} "
+                                      f"{file} "
+                                      f"{conf.colabfold.output_dir}/colabfold_{file.stem}"
+                                      )
     print("Example colabfold command:")
     print(commands_colabfold[-1])
 
@@ -413,23 +432,25 @@ def main(conf: HydraConfig) -> None:
 
     matches = glob.glob(conf.boltz.input_dir_pattern)
     dirs = [d for d in matches if os.path.isdir(d)]
-    all_modified_chains = []
+    all_chains = []
     for input_dir in dirs:
-        input_file = os.path.basename(os.path.dirname(input_dir))
-
-        modified_chains = get_modified_chains_from_dir(input_dir, conf.boltz.file_pattern, conf.boltz.base_chain,
-                                                       conf.boltz.partial_chain_start, conf.boltz.betachain_start,
-                                                       contig_dict)
-        all_modified_chains += modified_chains
-        save_chains(modified_chains, os.path.join(conf.boltz.input_files_dir, input_file),
+        if len(dirs) == 1 and conf.boltz.input_file_name:
+            input_file = conf.boltz.input_file_name
+        else:
+            os.path.basename(os.path.dirname(input_dir))
+        chains = get_chains_from_dir(input_dir, conf.boltz.file_pattern, conf.boltz.base_chain,
+                                     conf.boltz.partial_chain_start, conf.boltz.betachain_start,
+                                     contig_dict)
+        all_chains += chains
+        save_chains(chains, os.path.join(conf.boltz.input_files_dir, input_file),
                     conf.boltz.boltz_input_template, conf.boltz.cif_file,
                     conf.boltz.molecule_smiles,
                     conf)
-
         if not conf.boltz.boltz_params.use_msa_server:
-            save_fasta(True, modified_chains, 1, os.path.join(conf.boltz.input_files_dir, input_file,conf.boltz.colabfold.fasta_output_folder))
+            save_fasta(True, chains, 1,
+                       os.path.join(conf.boltz.input_files_dir, input_file, conf.boltz.colabfold.fasta_output_folder))
         if conf.colabfold.enable:
-            save_fasta(False, modified_chains, 4, os.path.join(conf.colabfold.input_files_dir, input_file))
+            save_fasta(False, chains, 4, os.path.join(conf.colabfold.input_files_dir, input_file))
 
     prepare_boltz_command(conf)
     if conf.colabfold.enable:

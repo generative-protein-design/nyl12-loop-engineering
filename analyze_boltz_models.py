@@ -4,6 +4,7 @@ import shutil
 from pathlib import Path
 
 import pandas as pd
+import yaml
 from natsort import natsorted
 from tabulate import tabulate
 from pymol import cmd
@@ -60,9 +61,48 @@ def find_prediction_files(base_path: Path):
             sequence_name = model_name.rsplit('_model_', 1)[0]
             input_name = sequence_name.rsplit('_', 3)[0]
             result.append({"confidence": confidence, "affinity": affinity, "model": pdb_file, "model_name": model_name,
-                           "sequence_name": sequence_name,"input_name":input_name})
+                           "sequence_name": sequence_name, "input_name": input_name})
 
     return result
+
+
+def get_sequence_from_boltz_input(file):
+    with open(file, 'r') as f:
+        data = yaml.safe_load(f)
+
+    protein_sequences = []
+
+    for entry in data.get('sequences', []):
+        if 'protein' in entry:
+            seq = entry['protein'].get('sequence')
+            if seq:
+                protein_sequences.append(seq)
+
+    return "".join(protein_sequences)
+
+
+def copy_top_sequences(filtered_data, conf, output_dir: Path):
+    seq_dir = output_dir / "top_sequences"
+    seq_dir.mkdir(parents=True, exist_ok=True)
+    input_files_dir = Path(conf.boltz.input_files_dir)
+    folders = [d for d in input_files_dir.iterdir() if d.is_dir()]
+    yaml_files = []
+    for folder in folders:
+        yaml_output_folder = folder / conf.boltz.yaml_files_dir
+        yaml_files += (list(yaml_output_folder.glob("*_model_*.yaml")))
+
+    top_models = \
+    filtered_data.drop_duplicates(subset='sequence_name', keep='first').head(conf.filtering.number_of_top_sequences)[
+        'model'].tolist()
+    yaml_files = [file for file in yaml_files if file.stem in top_models]
+    for file in yaml_files:
+        sequence_name = file.stem.rsplit('_model_', 1)[0]
+        output_name = seq_dir / f"{sequence_name}.fa"
+        with open(output_name, "w", encoding="utf-8") as f:
+            f.write(f">{sequence_name}\n")
+            seq = get_sequence_from_boltz_input(file)
+            f.write(seq)
+    print(f"Wrote {len(yaml_files)} sequence(s) to {seq_dir}")
 
 
 def copy_pdb_files(files, copy_relaxed: bool, output_dir: Path):
@@ -231,18 +271,16 @@ def filter_by_backbone(files, conf: HydraConfig) -> None:
         model_name = file["model_name"]
         # JMP: cmd.load... # load backbone model
 
-
         seqs = file["sequence_name"].split("_")
-        seqs[-1],seqs[-2]=seqs[-2],seqs[-1]
-        backbone_filename = "_".join(seqs)+".pdb"
-        backbone_file = Path(conf.ligand_mpnn.output_dir)/file["input_name"]/"backbones"/backbone_filename
+        seqs[-1], seqs[-2] = seqs[-2], seqs[-1]
+        backbone_filename = "_".join(seqs) + ".pdb"
+        backbone_file = Path(conf.ligand_mpnn.output_dir) / file["input_name"] / "backbones" / backbone_filename
         cmd.load(str(file["model"]), "mol1")
         cmd.load(str(backbone_file), "bb")
         # JMP: Compute RMSD between Boltz and corresponding RFDAA backbone model
-        res=cmd.align("mol1","bb")
+        res = cmd.align("mol1", "bb")
         cmd.delete("mol1")
         cmd.delete("bb")
-        print(res)
 
         # Read confidence.json
         with open(confidence_json, "r") as f:
@@ -284,7 +322,7 @@ def main(conf: HydraConfig) -> None:
     files = find_prediction_files(base_path)
 
     if conf.filtering.affinity.enable:
-        df, filtered=filter_by_affinity(files,base_path, conf)
+        df, filtered = filter_by_affinity(files, conf)
     elif conf.filtering.backbone.enable:
         df, filtered = filter_by_backbone(files, conf)
     else:
@@ -295,6 +333,8 @@ def main(conf: HydraConfig) -> None:
     copy_pdb_files(files, conf.filtering.affinity.enable, Path(conf.filtering.output_dir))
     total_models = len(df)
     passed_models = len(filtered)
+
+    copy_top_sequences(filtered, conf, Path(conf.filtering.output_dir))
 
     print(tabulate(df, headers="keys", tablefmt="psql", showindex=False))
     if filtered.empty:
