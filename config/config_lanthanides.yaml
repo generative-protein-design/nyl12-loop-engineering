@@ -70,7 +70,7 @@ boltz:
     base_chain: "MAFRLSSAVLLAALVAAPAYAAPTTTTKVDIAAFDPDKDGTIDLKEALAAGSAAFDKLDPDKDGTLDAKELKGRVSEADLKKLDPDNDGTLDKKEYLAAVEAQFKAANPDNDGTIDARELASPAGSALVNLIR"
     partial_chain_start: null
     betachain_start: null
-    cif_file: "/data/jpc/code/nyl12-loop-engineering/input_test/8fns.cif"
+    cif_file: ${base_dir}/cif/lanm/8fns.cif
     boltz_input_template: "templates/boltz_lanthanides.yaml.j2"
     molecule_smiles: "[Tb+3]"
     batch_processing: false

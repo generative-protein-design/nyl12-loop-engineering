@@ -18,7 +18,7 @@ diffusion:
   input_dir: ${base_dir}/input_test
   output_dir: ${work_dir}/0_diffusion
   command: "pixi run run-inference"
-  num_designs: 11
+  num_designs: 50 
 
   inference:
     model_runner: NRBStyleSelfCond
@@ -79,11 +79,11 @@ boltz:
     base_chain: "MAASSTDNILHFDFPEVQIGTAINPEGPTGITLFYFPKGVQASVDIQGGSVGTFFTQEKMQQGEAYLDGVAFTGGGILGLEAVAGAVSSLFADQTKNEVQFRRMPLISGAVIFDYTPRQNMIYPDKALGQKAFAALSAGQFVQGRHGAGVSASVGKLLRDGFQLAGQGGAFAQIGKTKIAVFTVVNAVGVILDEKGEVIYGLPKGATKQTLNQQVTELLQQPKKPFWPEPKNTTLTIVITNEKLAPRHLKQLGRQVHHALSQVIHPYATILDGDVLYTVSTRSIESDLYAPGADIESDLNAKFIYLGMVAGELAKQAVWSAVGYSHRP"
     partial_chain_start: "MAASS"
     betachain_start: "TTLTIVIT"
-    cif_file: ${base_dir}/cif/Nyl12_refine13_no_tail.cif
+    cif_file: ${base_dir}/cif/Nyl12_tetramer-symgen_no_tail.cif
     boltz_input_template: "templates/boltz.yaml.j2"
     molecule_smiles: "CC(NCC(C=C1)=CC=C1CNC(CCCCC(NCCCCCCNC(CCCCC(NC)=O)=O)=O)=O)=O"
     batch_processing: false
-    models_per_sequence: 1
+    models_per_sequence: 5
     boltz_params:
       model: boltz2
       output_format: pdb
