@@ -71,10 +71,6 @@ elif [[ "$(enabled "boltz")" == "True" ]]; then
         python "$SOURCE_PATH/prepare_boltz_input_nyl12.py" $HYDRA_PARAMS
 fi
 
-
-exit
-
-
 if [ "$(enabled "boltz.local_colabfold_search")" == "True" ]; then
 run_task colabfold_search <<'CMD'
 bash ${OUTPUT_FOLDER}/2_boltz/commands_colabfold_search.sh
