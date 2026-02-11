@@ -20,3 +20,4 @@ charge complex
 saveamberparm complex complex.prmtop complex.inpcrd
 savepdb complex complex.pdb
 quit
+

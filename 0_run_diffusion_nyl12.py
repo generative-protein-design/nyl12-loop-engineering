@@ -18,6 +18,7 @@ def run_diffusion(conf):
         os.makedirs(conf.work_dir, exist_ok=True)
 
     print(f"Working directory: {conf.work_dir}")
+    print(f"Input directory: {conf.diffusion.input_dir}")
 
    # Set up diffusion run
     diffusion_inputs = glob.glob(f"{conf.diffusion.input_dir}/*.pdb")

@@ -269,10 +269,8 @@ def filter_by_backbone(files, conf: HydraConfig) -> None:
     for file in files:
         confidence_json = file["confidence"]
         model_name = file["model_name"]
-        # JMP: cmd.load... # load backbone model
 
         seqs = file["sequence_name"].split("_")
-        seqs[-1], seqs[-2] = seqs[-2], seqs[-1]
         backbone_filename = "_".join(seqs) + ".pdb"
         backbone_file = Path(conf.ligand_mpnn.output_dir) / file["input_name"] / "backbones" / backbone_filename
         cmd.load(str(file["model"]), "mol1")

@@ -128,10 +128,10 @@ def read_fasta_chains(source) -> List[Dict[str, Any]]:
 
 def get_chain_name(chain: Dict[Any]) -> str:
     name = chain["name"]
+    if "id" in chain:
+        name += f"_{chain['id']}"
     if "T" in chain:
         name += f"_{chain['T']}"
-    if "id" in name:
-        name += f"_{chain['id']}"
     return name
 
 
@@ -243,8 +243,8 @@ def render_boltz_input(chain: Dict[str, Any], template_path: str, cif_file: str,
         "constraints": OmegaConf.to_container(conf.boltz.constraints, resolve=True),
         "properties": OmegaConf.to_container(conf.boltz.properties, resolve=True),
     }
-    if not conf.boltz.boltz_params.use_msa_server:
-        context["msa_file"] = os.path.join(output_dir, conf.boltz.colabfold.output_folder, msa_file)
+    if conf.boltz.local_colabfold_search.enable:
+        context["msa_file"] = os.path.join(output_dir, conf.boltz.local_colabfold_search.output_folder, msa_file)
     template_path = Path(template_path)
     template_str = template_path.read_text()
 
@@ -316,12 +316,12 @@ def prepare_colabfold_search_command(conf):
 
     commands_colabfold = []
     for folder in folders:
-        fasta_folder = folder / conf.boltz.colabfold.fasta_output_folder
+        fasta_folder = folder / conf.boltz.local_colabfold_search.fasta_output_folder
         colabfold_files = list(fasta_folder.glob("*.fa"))
 
         for file in colabfold_files:
-            commands_colabfold.append(f"{conf.boltz.colabfold.search_command} {file} "
-                                      f"{conf.boltz.colabfold.database} {folder / conf.boltz.colabfold.output_folder}"
+            commands_colabfold.append(f"{conf.boltz.local_colabfold_search.search_command} {file} "
+                                      f"{conf.boltz.local_colabfold_search.database} {folder / conf.boltz.local_colabfold_search.output_folder}"
                                       )
 
     print("Example colabfold_search command:")
@@ -338,7 +338,7 @@ def prepare_msas_convert(conf):
 
     commands_msas_convert = []
     for folder in folders:
-        colabfold_search_output_folder = folder / conf.boltz.colabfold.output_folder
+        colabfold_search_output_folder = folder / conf.boltz.local_colabfold_search.output_folder
         yaml_output_folder = folder / conf.boltz.yaml_files_dir
         yaml_files = list(yaml_output_folder.glob("*_model_0.yaml"))
         for file in yaml_files:
@@ -346,7 +346,7 @@ def prepare_msas_convert(conf):
             csv_file_alpha = fname + "_alpha.csv"
             csv_file_beta = fname + "_beta.csv"
             msas_file = fname + ".a3m"
-            commands_msas_convert.append(f"{conf.boltz.colabfold.convert_command}  --msas_file {msas_file} "
+            commands_msas_convert.append(f"{conf.boltz.local_colabfold_search.convert_command}  --msas_file {msas_file} "
                                          f" --csv_alpha {csv_file_alpha}  --csv_beta {csv_file_beta}"
                                          )
 
@@ -399,7 +399,7 @@ def prepare_boltz_command(conf):
             commands_boltz.append(f"{conf.boltz.command} {file} "
                                   f"--model {conf.boltz.boltz_params.model} "
                                   f"--output_format {conf.boltz.boltz_params.output_format} "
-                                  f"{'--use_msa_server' if conf.boltz.boltz_params.use_msa_server else ''} "
+                                  f"{'--use_msa_server' if not conf.boltz.local_colabfold_search.enable else ''} "
                                   f"{'--use_potentials' if conf.boltz.boltz_params.use_potentials else ''} "
                                   f"{'--affinity_mw_correction' if conf.boltz.boltz_params.affinity_mw_correction else ''} "
                                   f"{'--no_kernels' if conf.boltz.boltz_params.no_kernels else ''} "
@@ -427,6 +427,7 @@ def main(conf: HydraConfig) -> None:
         f"contig_map: {conf.contig_map}\n" +
         OmegaConf.to_yaml(conf.boltz, resolve=True)
     )
+    colabfold_enabled = OmegaConf.select(conf, 'colabfold.enable', default=False)
 
     contig_dict = parse_contig(conf.contig_map)
 
@@ -437,7 +438,7 @@ def main(conf: HydraConfig) -> None:
         if len(dirs) == 1 and conf.boltz.input_file_name:
             input_file = conf.boltz.input_file_name
         else:
-            os.path.basename(os.path.dirname(input_dir))
+            input_file = os.path.basename(os.path.dirname(input_dir))
         chains = get_chains_from_dir(input_dir, conf.boltz.file_pattern, conf.boltz.base_chain,
                                      conf.boltz.partial_chain_start, conf.boltz.betachain_start,
                                      contig_dict)
@@ -446,17 +447,18 @@ def main(conf: HydraConfig) -> None:
                     conf.boltz.boltz_input_template, conf.boltz.cif_file,
                     conf.boltz.molecule_smiles,
                     conf)
-        if not conf.boltz.boltz_params.use_msa_server:
+        if conf.boltz.local_colabfold_search.enable:
             save_fasta(True, chains, 1,
-                       os.path.join(conf.boltz.input_files_dir, input_file, conf.boltz.colabfold.fasta_output_folder))
-        if conf.colabfold.enable:
+                       os.path.join(conf.boltz.input_files_dir, input_file, conf.boltz.local_colabfold_search.fasta_output_folder))
+        if colabfold_enabled:
             save_fasta(False, chains, 4, os.path.join(conf.colabfold.input_files_dir, input_file))
 
     prepare_boltz_command(conf)
-    if conf.colabfold.enable:
+
+    if colabfold_enabled:
         prepare_colabfold_command(conf)
 
-    if not conf.boltz.boltz_params.use_msa_server:
+    if conf.boltz.local_colabfold_search.enable:
         prepare_colabfold_search_command(conf)
         prepare_msas_convert(conf)
 

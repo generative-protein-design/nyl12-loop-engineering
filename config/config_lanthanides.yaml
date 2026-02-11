@@ -5,6 +5,7 @@ defaults:
 
 base_dir: .
 work_dir: ${base_dir}/output_lanthanides
+source_dir: ${base_dir} # will be overwritten by run_xxx.sh scripts
 
 hydra:
   output_subdir: null
@@ -15,16 +16,17 @@ hydra:
 contig_map: "58-58,A59-70,13-13,A84-95,38-38"
 
 diffusion:
+  enable: true
   input_dir: ${base_dir}/input_lanthanides
   output_dir: ${work_dir}/0_diffusion
-  command: "pixi run run-inference"
-  num_designs: 5 
+  command: "pixi run --manifest-path ${source_dir}/pixi.toml run-inference"
+  num_designs: 11
 
   inference:
     model_runner: NRBStyleSelfCond
     ligand: "TB"
     num_designs: ${diffusion.num_designs}
-    ckpt_path: /data/jpc/code/rf_diffusion_all_atom/RFDiffusionAA_paper_weights.pt
+    ckpt_path: ${data_path}/model_params/rf_diffusion/RFDiffusionAA_paper_weights.pt
 
   model:
     freeze_track_motif: true
@@ -39,27 +41,26 @@ diffusion:
 
 
 ligand_mpnn:
+  enable: true
   output_dir: ${work_dir}/1_ligandmpnn
-  make_maskdict_command: "pixi run -e ligand ${base_dir}/scripts/make_maskdict_from_trb.py"
-  command: "pixi run run-ligand"
+  make_maskdict_command: "pixi run --manifest-path ${source_dir}/pixi.toml  -e ligand ${source_dir}/scripts/make_maskdict_from_trb.py"
+  command: "pixi run --manifest-path ${source_dir}/pixi.toml run-ligand"
   mpnn_temperatures: [0.1, 0.2, 0.3]
   mpnn_outputs_per_temperature: 5
   mpnn_omit_AAs: "C"
-  model_params_file: /data/jpc/code/LigandMPNN/model_params/ligandmpnn_v_32_010_25.pt
+  model_params_file: ${data_path}/model_params/ligand_mpnn/ligandmpnn_v_32_010_25.pt
 
-
-colabfold:
-    enable: false
-    custom_template_path:
 
 boltz:
+    enable: true
     input_dir_pattern: ${ligand_mpnn.output_dir}/*/seqs
     output_dir: ${work_dir}/2_boltz
-    command: "pixi run boltz predict"
-    colabfold:
-      search_command: "pixi run -e colabfold colabfold_search"
-      convert_command: "pixi run -e colabfold python ${base_dir}/prepare_msa_files.py"
-      database: /data/jpc/code/database/
+    command: "${boltz.command_prefix} pixi run --manifest-path ${source_dir}/pixi.toml boltz predict"
+    local_colabfold_search:
+      enable: false
+      search_command: "pixi run --manifest-path ${source_dir}/pixi.toml -e colabfold colabfold_search"
+      convert_command: "pixi run --manifest-path ${source_dir}/pixi.toml -e colabfold python ${source_dir}/prepare_msa_files.py"
+      database: ${data_path}/database/
       output_folder: msas
       fasta_output_folder: fasta
       merge_fasta: true
@@ -75,14 +76,13 @@ boltz:
     boltz_input_template: "templates/boltz_lanthanides.yaml.j2"
     molecule_smiles: "[Tb+3]"
     batch_processing: false
-    models_per_sequence: 5
+    models_per_sequence: 1
     boltz_params:
       model: boltz2
       output_format: pdb
-      use_msa_server: false
       msa_pairing_strategy: greedy
       use_potentials: true
-      cache: /data/jpc/code/boltz
+      cache: ${data_path}/boltz_cache
       output_dir: ${boltz.output_dir}
       affinity_mw_correction: false
       recycling_steps: 3
@@ -95,6 +95,7 @@ boltz:
     properties: []
 
 filtering:
+  number_of_top_sequences: 3
   backbone:
     enable: true
     max_rmsd: 2.0

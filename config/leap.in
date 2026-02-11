@@ -7,3 +7,4 @@ saveoff LIG lig.lib
 saveamberparm LIG lig.prmtop lig.inpcrd
 
 quit
+

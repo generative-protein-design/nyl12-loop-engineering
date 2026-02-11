@@ -1,13 +1,12 @@
 # @package _global_
-diffusion:
-  inference:
-    ckpt_path: /data/jpc/code/rf_diffusion_all_atom/RFDiffusionAA_paper_weights.pt
 
-ligand_mpnn:
-  model_params_file: /data/jpc/code/LigandMPNN/model_params/ligandmpnn_v_32_010_25.pt
+
+data_path: /data/shared/proteins
 
 boltz:
-    colabfold:
-      database: /data/jpc/code/database/
-    boltz_params:
-      cache: /data/jpc/code/boltz
+  image: ""
+  command_prefix: ""
+
+colabfold:
+  image: ""
+  command_prefix: ""

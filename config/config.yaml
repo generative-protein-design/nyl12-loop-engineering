@@ -4,6 +4,7 @@ defaults:
   - _self_
 
 base_dir: .
+source_dir: ${base_dir} # will be overwritten by run_xxx.sh scripts
 work_dir: ${base_dir}/output_xama
 
 hydra:
@@ -11,20 +12,20 @@ hydra:
   run:
     dir: ${base_dir}
 
-
 contig_map: "A1-5,A18-114,7-7,A122-150,14-14,A165-221,A233-328,B1-5,B286-292,8-8,B301-308,C1-5,D1-5,D29-35,5-5,D41-95,9-9,D105-110"
 
 diffusion:
-  input_dir: ${base_dir}/input_test
+  enable: true
+  input_dir: ${base_dir}/input
   output_dir: ${work_dir}/0_diffusion
-  command: "pixi run run-inference"
+  command: "pixi run --manifest-path ${source_dir}/pixi.toml run-inference"
   num_designs: 11
 
   inference:
     model_runner: NRBStyleSelfCond
     ligand: "LIG"
     num_designs: ${diffusion.num_designs}
-    ckpt_path: /data/jpc/code/rf_diffusion_all_atom/RFDiffusionAA_paper_weights.pt
+    ckpt_path: ${data_path}/model_params/rf_diffusion/RFDiffusionAA_paper_weights.pt
 
   model:
     freeze_track_motif: true
@@ -42,34 +43,37 @@ diffusion:
 ## This usually gives decent success with designable backbones.
 ## For more complicated cases consider doing >100 sequences.
 ligand_mpnn:
+  enable: true
   output_dir: ${work_dir}/1_ligandmpnn
-  make_maskdict_command: "pixi run -e ligand ${base_dir}/scripts/make_maskdict_from_trb.py"
-  command: "pixi run run-ligand"
+  make_maskdict_command: "pixi run --manifest-path ${source_dir}/pixi.toml -e ligand ${source_dir}/scripts/make_maskdict_from_trb.py"
+  command: "pixi run --manifest-path ${source_dir}/pixi.toml run-ligand"
   mpnn_temperatures: [0.1, 0.2, 0.3]
   mpnn_outputs_per_temperature: 5
   mpnn_omit_AAs: "C"
-  model_params_file: /data/jpc/code/LigandMPNN/model_params/ligandmpnn_v_32_010_25.pt
+  model_params_file: ${data_path}/model_params/ligand_mpnn/ligandmpnn_v_32_010_25.pt
 
 
 colabfold:
     enable: true
     output_dir: ${work_dir}/2b_colabfold
     input_files_dir: ${colabfold.output_dir}/input
-    command: pixi run -e colabfold colabfold_batch
+    command: ${colabfold.command_prefix} pixi run --manifest-path ${source_dir}/pixi.toml -e colabfold colabfold_batch
     use_templates: true
     custom_template_path:  ${base_dir}/cif/all_loops
-    af2_weights_folder: /data/35y/alphafold_params
+    af2_weights_folder: ${data_path}/model_params/alphafold
     msa_mode: single_sequence
     extra_params: "--calc-extra-ptm --num-recycle 4"
 
 boltz:
+    enable: true
     input_dir_pattern: ${ligand_mpnn.output_dir}/*/seqs
     output_dir: ${work_dir}/2_boltz
-    command: "pixi run boltz predict"
-    colabfold:
-      search_command: "pixi run -e colabfold colabfold_search"
-      convert_command: "pixi run -e colabfold python ${base_dir}/prepare_msa_files.py"
-      database: /data/jpc/code/database/
+    command: "${boltz.command_prefix} pixi run --manifest-path ${source_dir}/pixi.toml boltz predict"
+    local_colabfold_search:
+      enable: true
+      search_command: "pixi run --manifest-path ${source_dir}/pixi.toml -e colabfold colabfold_search"
+      convert_command: "pixi run --manifest-path ${source_dir}/pixi.toml -e colabfold python ${source_dir}/prepare_msa_files.py"
+      database: ${data_path}/database/
       output_folder: msas
       fasta_output_folder: fasta
       merge_fasta: true
@@ -89,10 +93,9 @@ boltz:
     boltz_params:
       model: boltz2
       output_format: pdb
-      use_msa_server: false
       msa_pairing_strategy: greedy
       use_potentials: true
-      cache: /data/jpc/code/boltz
+      cache: ${data_path}/boltz_cache
       output_dir: ${boltz.output_dir}
       affinity_mw_correction: true
       recycling_steps: 3
@@ -116,6 +119,7 @@ boltz:
            binder: I
 
 relaxation:
+    enable: true
     output_dir: ${work_dir}/3_relaxation
 
 filtering:

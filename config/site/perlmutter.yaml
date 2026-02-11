@@ -1,20 +1,11 @@
 # @package _global_
-diffusion:
-  inference:
-    ckpt_path: /global/cfs/cdirs/m906/protein-design/RFDiffusionAA_paper_weights.pt
 
-ligand_mpnn:
-  model_params_file: /global/cfs/cdirs/m906/protein-design/model_params/ligandmpnn_v_32_010_25.pt
+data_path: /global/cfs/cdirs/m906/protein-design
 
 boltz:
-  colabfold:
-    database: /global/cfs/cdirs/m906/protein-design/database
-  boltz_params:
-    cache: /global/cfs/cdirs/m906/protein-design/boltz_cache
-  command: podman-hpc run --umask 0000 -it --gpu --rm --shm-size=64G -e CUDA_VISIBLE_DEVICES -v /global/cfs/cdirs/m906/protein-design:/global/cfs/cdirs/m906/protein-design boltz2:0.1.0 pixi run boltz predict
-
-
+  image: boltz2:0.1.0
+  command_prefix: podman-hpc run --umask 0000 -it --gpu --rm --shm-size=64G -e CUDA_VISIBLE_DEVICES -v /global/cfs/cdirs/m906/protein-design:/global/cfs/cdirs/m906/protein-design ${boltz.image}
 
 colabfold:
-  af2_weights_folder: /global/cfs/cdirs/m906/protein-design/alphafold_params
-  command: podman-hpc run --umask 0000 -it --gpu --rm --shm-size=64G -e CUDA_VISIBLE_DEVICES -e CIF_FOLDER -v /tmp/cif:/tmp/cif -v /global/cfs/cdirs/m906/protein-design:/global/cfs/cdirs/m906/protein-design colabfold:0.1.0 pixi run -e colabfold colabfold_batch
+  image: colabfold:0.1.0
+  command_prefix: podman-hpc run --umask 0000 -it --gpu --rm --shm-size=64G -e CUDA_VISIBLE_DEVICES -e CIF_FOLDER -v /tmp/cif:/tmp/cif -v /global/cfs/cdirs/m906/protein-design:/global/cfs/cdirs/m906/protein-design ${colabfold.image}
