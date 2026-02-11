@@ -326,6 +326,8 @@ def main(conf: HydraConfig) -> None:
     else:
         return
 
+    filtered.drop_duplicates(subset='sequence_name', keep='first', inplace=True)
+
     df.to_csv(Path(conf.filtering.output_dir) / "full_metrics.csv", index=False)
 
     copy_pdb_files(files, conf.filtering.affinity.enable, Path(conf.filtering.output_dir))
