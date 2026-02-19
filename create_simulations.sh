@@ -20,6 +20,7 @@ mkdir $PROJECT_PATH/config $PROJECT_PATH/templates $PROJECT_PATH/cif
 cp $SOURCE_PATH/config/config.yaml $PROJECT_PATH/config
 cp $SOURCE_PATH/templates/boltz.yaml.j2 $PROJECT_PATH/templates/boltz.yaml.j2
 cp -r $SOURCE_PATH/cif/all_loops $PROJECT_PATH/cif
+cp -r $SOURCE_PATH/input $PROJECT_PATH
 cp -r $SOURCE_PATH/cif/Nyl12_refine13_no_tail.cif $PROJECT_PATH/cif
 
 cat << EOF > $PROJECT_PATH/README
@@ -28,7 +29,7 @@ SIMULATION WORKFLOW
 ============================================================
 
 1. ENVIRONMENT SETUP
-   Ensure $BASE_DIR is included in your PATH variable.
+   Ensure $SOURCE_PATH is included in your PATH variable.
 
 2. PROJECT DIRECTORY
    cd $PROJECT_PATH
